@@ -77,7 +77,7 @@ class Graph:
         
 
 # Load files
-data_file_1 = DataFile("RUN4.TXT")
+data_file_1 = DataFile("exampleTestRun.TXT")
 
 # Instantiate a Graph
 compressionLinePlot = Graph(

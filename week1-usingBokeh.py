@@ -1,29 +1,32 @@
-#Imports
+# Imports
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
 import numpy as np
 from bokeh.models import Range1d
 from scipy.signal import find_peaks
 
-# apply theme to current document
+# Graph theme
 curdoc().theme = "dark_minimal"
 
-# prepare some data
-xValues = []
+# Lists used
+xValues = [] # use np array to fill
 yForkValues = []
 yShockValues = []
 
-# reading files
+# Reading from file
 with open("exampleTestRun.TXT", "r") as file:
-    # Skip the first two lines
+    # Skip header (first 2 lines)
     file.readline()
     file.readline()
-
-    for i in range(0, 5000):
-        xValues.append(i * 0.01)
-        temp = file.readline().split(",")
-        yForkValues.append(temp[1])
-        yShockValues.append(temp[0])
+    i=0
+    for accelerometerInstance in file :
+        accelerometerList = accelerometerInstance.split(",")
+        if len(accelerometerList)!=1:
+            i+=0.01
+            xValues.append(i) # Adding time base ##------------------------------------------------------------------------------------------##
+            # Axis measured - Update values ##------------------------------------------------------------------------------------------##
+            yShockValues.append(accelerometerList[0])
+            yForkValues.append(accelerometerList[1])
 
 # Convert lists to numpy arrays
 xValues = np.array(xValues, dtype=float)
@@ -69,6 +72,7 @@ p.circle(xValues[shockTroughs], yShockValues[shockTroughs], color="blue", size=2
 p.legend.click_policy = "hide"
 show(p)
 
+# Print values
 print("Shock values:")
 print("Max: ", yShockValues.max(), " Min: ", yShockValues.min(), " Mean: ", yShockValues.mean())
 print("Fork values:")

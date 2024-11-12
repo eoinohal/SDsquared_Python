@@ -24,8 +24,8 @@ with open("exampleTestRun.TXT", "r") as file:
         accelerometerList = accelerometerInstance.split(",")
         if len(accelerometerList)!=1:
             # Axis measured - Update values ##------------------------------------------------------------------------------------------##
-            yShockValues.append(accelerometerList[0])
-            yForkValues.append(accelerometerList[1])
+            yShockValues.append(accelerometerList[6]) # 6 is the rear shock
+            yForkValues.append((accelerometerList[7])) # 7 is the front fork
 
 # Populating x graph (time axis) into numpy array
 sampleFrequency = 1000; samplePeriod = (1/sampleFrequency); timeLength = lineCount*samplePeriod

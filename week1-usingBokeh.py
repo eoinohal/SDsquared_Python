@@ -7,7 +7,7 @@ import numpy as np
 from scipy.signal import find_peaks
 
 # Defining which text file to user
-textFile = "TestRun2.TXT"
+textFile = "TestRun1.TXT"
 
 # Graph theme
 curdoc().theme = "dark_minimal"
@@ -43,13 +43,52 @@ yForkValues = np.array(yForkValues, dtype=float)
 forkPeaks, _ = find_peaks(yForkValues)
 forkTroughs, _ = find_peaks(-yForkValues)
 
+forkPeakTimes = xValues[forkPeaks]
+forkTroughTimes = xValues[forkTroughs]
+
+# Initialize combined lists
+time_differences = []
+compression_differences = []
+
+# Loop through each peak
+for peak, peak_time in zip(forkPeaks, forkPeakTimes):
+    # Find the first trough that occurs after the peak time
+    following_troughs = forkTroughTimes[(forkTroughTimes > peak_time)]
+
+    if len(following_troughs) > 0:
+        # Take the first following trough
+        following_trough = following_troughs[0]
+
+        # Calculate the time difference
+        time_diff = following_trough - peak_time
+        time_differences.append(time_diff)
+
+        # Calculate the compression difference
+        trough_value = yForkValues[forkTroughs[np.where(forkTroughTimes == following_trough)[0][0]]]
+        compression_diff = yForkValues[peak] - trough_value
+        compression_differences.append((peak_time, compression_diff, time_diff))
+    else:
+        # Handle case where there is no following trough
+        time_differences.append(np.nan)  # NaN for no following trough
+        compression_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
+
+# Convert results to formatted strings
+formatted_differences = [
+    f"{time:.3f}s: {time_diff:.3f}s: {compression_diff:.2f} mm: {compression_diff / time_diff:} mm/s"
+    if not (np.isnan(compression_diff) or np.isnan(time_diff))
+    else f"{time:.3f}s: No trough"
+    for time, compression_diff, time_diff in compression_differences
+]
+
+
+
 yShockValues = np.array(yShockValues, dtype=float)
 shockPeaks, _ = find_peaks(yShockValues)
 shockTroughs, _ = find_peaks(-yShockValues)
 
 # Create a new graph plot with a title and axis labels
 p = figure(
-    title="Compression Plot",
+    title="Compression Plot: " + textFile,
     sizing_mode="stretch_width",
     height=450,
     x_axis_label="Time (s)",
@@ -112,6 +151,10 @@ stats_div = Div(
     <p><b>Max:</b> {shockMax:.2f} mm<br><b>Min:</b> {shockMin:.2f} mm<br><b>Mean:</b> {shockMean:.2f} mm</p>
     <h3>Fork Values:</h3>
     <p><b>Max:</b> {forkMax:.2f} mm<br><b>Min:</b> {forkMin:.2f} mm<br><b>Mean:</b> {forkMean:.2f} mm</p>
+    <h3>Fork Compression Differences:</h3>
+    <ul>
+    {''.join(f'<li>{item}</li>' for item in formatted_differences)}
+    </ul>
     """,
     sizing_mode="stretch_width",
 )

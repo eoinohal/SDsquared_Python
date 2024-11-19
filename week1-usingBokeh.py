@@ -5,6 +5,8 @@ from bokeh.models import Range1d, Div
 from bokeh.layouts import Column
 import numpy as np
 from scipy.signal import find_peaks
+from scipy.stats import linregress
+
 
 # Text file data is retreived from
 textFile = "TestRun1.TXT"
@@ -91,27 +93,27 @@ shockPeaks, _ = find_peaks(yShockValues)
 shockTroughs, _ = find_peaks(-yShockValues)
 
 ##--- Displacement plot graph ---##
-p = figure(
-    title="Displacement Plot: " + textFile,
+displacementGraph = figure(
+    title="Percentage Displacement Plot: " + textFile,
     sizing_mode="stretch_width",
     height=450,
     x_axis_label="Time (s)",
     y_axis_label="Percentage displacement (%)",
     tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
 )
-p.toolbar.logo = None
+displacementGraph.toolbar.logo = None
 
 # Data analysis
 shockMax, shockMin, shockMean = yShockValues.max(), yShockValues.min(), yShockValues.mean()
 forkMax, forkMin, forkMean = yForkValues.max(), yForkValues.min(), yForkValues.mean()
 
 # Limit axis movement
-p.x_range = Range1d(start=0, end=timeOfRun, bounds=(0, timeOfRun)) # Display whole time range
-p.y_range = Range1d(start=0, end=100, bounds=(0, 100))
+displacementGraph.x_range = Range1d(start=0, end=timeOfRun, bounds=(0, timeOfRun)) # Display whole time range
+displacementGraph.y_range = Range1d(start=0, end=100, bounds=(0, 100))
 
 # Rendering Fork line + Points
-p.line(xValues, yForkValues, legend_label="Front Fork", color="#00FFFF", line_width=0.5)
-p.scatter(
+displacementGraph.line(xValues, yForkValues, legend_label="Front Fork", color="#00FFFF", line_width=0.5)
+displacementGraph.scatter(
     xValues[forkPeaks],
     yForkValues[forkPeaks],
     color="red",
@@ -119,7 +121,7 @@ p.scatter(
     legend_label="Fork Peaks",
     marker="circle",
 )
-p.scatter(
+displacementGraph.scatter(
     xValues[forkTroughs],
     yForkValues[forkTroughs],
     color="orange",
@@ -129,8 +131,8 @@ p.scatter(
 )
 
 # Rendering Shock line + Points
-p.line(xValues, yShockValues, legend_label="Rear Shock", color="#FF9500", line_width=0.5)
-p.scatter(
+displacementGraph.line(xValues, yShockValues, legend_label="Rear Shock", color="#FF9500", line_width=0.5)
+displacementGraph.scatter(
     xValues[shockPeaks],
     yShockValues[shockPeaks],
     color="red",
@@ -138,7 +140,7 @@ p.scatter(
     legend_label="Shock Peaks",
     marker="circle",
 )
-p.scatter(
+displacementGraph.scatter(
     xValues[shockTroughs],
     yShockValues[shockTroughs],
     color="orange",
@@ -146,6 +148,54 @@ p.scatter(
     legend_label="Shock Troughs",
     marker="circle",
 )
+
+
+
+
+# Determine Shock Compression
+displacementTimeList = []
+displacementSpeedList = []
+for item in formatted_differences:
+    split = item.split(': ')
+    if split[-1]!='No trough': #skipping over empty cases
+        displacementTimeList.append(split[1])
+        displacementSpeedList.append(split[3])
+
+# Convert lists to numpy arrays
+displacementTimeList = np.array(displacementTimeList, dtype=float)
+displacementSpeedList = np.array(displacementSpeedList, dtype=float)
+
+
+##--- Compression scatter graph ---##
+compGraph = figure(
+    title="Compression Scatter Plot: " + textFile,
+    sizing_mode="stretch_width",
+    height=450,
+    x_axis_label="Speed of displacement (%/s)",
+    y_axis_label="Absolute change in displacement (%)",
+    tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
+)
+compGraph.toolbar.logo = None
+
+# Limit axis movement
+compGraph.x_range = Range1d(start=0, end=max(displacementTimeList)*1.2, bounds=(0, max(displacementTimeList)*1.2))
+compGraph.y_range = Range1d(start=0, end=max(displacementSpeedList)*1.2, bounds=(0, max(displacementSpeedList)*1.2))
+
+# compGraph scatter with shock compression
+compGraph.scatter(
+    displacementTimeList,
+    displacementSpeedList,
+    color="orange",
+    size=4,
+    legend_label="shock compression",
+    marker="circle",
+)
+
+# Line of best fit for shock compression
+shockCompression = linregress(displacementTimeList, displacementSpeedList)
+y_regress = shockCompression.slope * displacementTimeList + shockCompression.intercept
+compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=0.5)
+
 
 # Display stats as HTML below the plot
 stats_div = Div(
@@ -162,13 +212,14 @@ stats_div = Div(
     sizing_mode="stretch_width",
 )
 
-p.legend.click_policy = "hide"
 
-# Combine plot and stats into a layout
-layout = Column(p, stats_div, sizing_mode="stretch_both")
+# Combine graphs into a dashboard layout
+displacementGraph.legend.click_policy = "hide"; compGraph.legend.click_policy = "hide"
+layout = Column(displacementGraph, compGraph, stats_div, sizing_mode="stretch_both")
 
 # Show the plot with stats
 show(layout)
+
 
 '''
 ##--- Scatter Plot ---##
@@ -182,18 +233,6 @@ p = figure(
     tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
 )
 
-displacementTimeList = []
-displacementSpeedList = []
-{''.join(f'<li>{item}</li>' for item in formatted_differences)}
-for item in formatted_differences:
-    split = item.split(': ')
-    if split[-1]!='No trough': #skipping over empty cases
-        print(split)
-        displacementTimeList.append(split[1])
-        displacementSpeedList.append(split[3])
-
-print(displacementTimeList)
-print(displacementSpeedList)
 p.scatter(
     displacementTimeList,
     displacementSpeedList,

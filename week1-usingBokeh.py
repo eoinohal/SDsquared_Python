@@ -150,7 +150,7 @@ displacementGraph.scatter(
 )
 
 
-
+####------------------------- Scatter Plot -------------------------####
 
 # Determine Shock Compression
 displacementTimeList = []
@@ -165,7 +165,6 @@ for item in formatted_differences:
 displacementTimeList = np.array(displacementTimeList, dtype=float)
 displacementSpeedList = np.array(displacementSpeedList, dtype=float)
 
-
 ##--- Compression scatter graph ---##
 compGraph = figure(
     title="Compression Scatter Plot: " + textFile,
@@ -178,10 +177,10 @@ compGraph = figure(
 compGraph.toolbar.logo = None
 
 # Limit axis movement
-compGraph.x_range = Range1d(start=0, end=max(displacementTimeList)*1.2, bounds=(0, max(displacementTimeList)*1.2))
-compGraph.y_range = Range1d(start=0, end=max(displacementSpeedList)*1.2, bounds=(0, max(displacementSpeedList)*1.2))
+compGraph.x_range = Range1d(start=0, end=max(displacementTimeList)*1.2, bounds=(0, max(displacementTimeList)*1.1))
+compGraph.y_range = Range1d(start=0, end=max(displacementSpeedList)*1.2, bounds=(0, max(displacementSpeedList)*1.1))
 
-# compGraph scatter with shock compression
+# shock compression scatter
 compGraph.scatter(
     displacementTimeList,
     displacementSpeedList,
@@ -194,10 +193,11 @@ compGraph.scatter(
 # Line of best fit for shock compression
 shockCompression = linregress(displacementTimeList, displacementSpeedList)
 y_regress = shockCompression.slope * displacementTimeList + shockCompression.intercept
-compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=0.5)
+compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=2)
 
+####------------------------- HTML Readings -------------------------####
 
-# Display stats as HTML below the plot
+# Display stats as HTML below the plot - Useful for debugging
 stats_div = Div(
     text=f"""
     <h3>Shock Values:</h3>
@@ -212,6 +212,7 @@ stats_div = Div(
     sizing_mode="stretch_width",
 )
 
+####------------------------- Rendering -------------------------####
 
 # Combine graphs into a dashboard layout
 displacementGraph.legend.click_policy = "hide"; compGraph.legend.click_policy = "hide"
@@ -219,30 +220,3 @@ layout = Column(displacementGraph, compGraph, stats_div, sizing_mode="stretch_bo
 
 # Show the plot with stats
 show(layout)
-
-
-'''
-##--- Scatter Plot ---##
-# Create a new graph plot with a title and axis labels
-p = figure(
-    title="XXX scatter plot", # Give graph suitable name
-    sizing_mode="stretch_width",
-    height=500,
-    x_axis_label="Absolute displacement length (mm)",
-    y_axis_label="Compression speed (mm/s)",
-    tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
-)
-
-p.scatter(
-    displacementTimeList,
-    displacementSpeedList,
-    color="red",
-    size=2,
-    legend_label="Fork Peaks",
-    marker="circle",
-)
-
-
-# show the results
-show(p)
-'''

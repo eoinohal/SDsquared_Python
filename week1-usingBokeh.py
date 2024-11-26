@@ -79,13 +79,36 @@ for peak, peak_time in zip(forkPeaks, forkPeakTimes):
         time_differences.append(np.nan)  # NaN for no following trough
         displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
 
-# Convert results to formatted strings
-formatted_differences = [
-    f"{time:.3f}: {time_diff:.3f}: {displacement_diff:.2f}: {displacement_diff / time_diff:}"
-    if not (np.isnan(displacement_diff) or np.isnan(time_diff))
-    else f"{time:.3f}s: No trough"
-    for time, displacement_diff, time_diff in displacement_differences
+#Relevant fork index
+relevantPeaksIndices = [
+    forkPeaks[i]  # Use forkPeaks indices to map back to yForkValues
+    for i, (_, displacement_diff, _) in enumerate(displacement_differences)
+    if displacement_diff > 3
 ]
+relevantPeaksXaxis = [xValues[i] for i in relevantPeaksIndices]
+relevantPeaksYaxis = [yForkValues[i] for i in relevantPeaksIndices]
+
+
+# Relevant Trough Index
+relevantTroughsIndices = []
+# Iterate through the relevant peaks
+for peak_index in relevantPeaksIndices:
+    # Find the first trough index that occurs after the current peak
+    following_troughs = forkTroughs[forkTroughs > peak_index]  # Trough indices after the current peak
+    if len(following_troughs) > 0:
+        relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
+
+# Get x and y points for the relevant troughs
+relevantTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
+relevantTroughsYaxis = [yForkValues[i] for i in relevantTroughsIndices]
+
+formatted_differences = [
+    (xValues[peak_index],yForkValues[peak_index] - yForkValues[trough_index],(yForkValues[peak_index] - yForkValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
+    if trough_index is not None
+    else f"{xValues[peak_index]:.3f}s: No trough found"
+    for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
+]
+
 
 # Calculating turning points
 yShockValues = np.array(yShockValues, dtype=float)
@@ -114,16 +137,18 @@ displacementGraph.y_range = Range1d(start=0, end=100, bounds=(0, 100))
 # Rendering Fork line + Points
 displacementGraph.line(xValues, yForkValues, legend_label="Front Fork", color="#00FFFF", line_width=0.5)
 displacementGraph.scatter(
-    xValues[forkPeaks],
-    yForkValues[forkPeaks],
+    relevantPeaksXaxis,
+    relevantPeaksYaxis,
     color="red",
-    size=2,
+    size=2,  # Slightly larger for clarity
     legend_label="Fork Peaks",
     marker="circle",
 )
+
+
 displacementGraph.scatter(
-    xValues[forkTroughs],
-    yForkValues[forkTroughs],
+    relevantTroughsXaxis,
+    relevantTroughsYaxis,
     color="orange",
     size=2,
     legend_label="Fork Troughs",
@@ -156,10 +181,17 @@ displacementGraph.scatter(
 displacementTimeList = []
 displacementSpeedList = []
 for item in formatted_differences:
-    split = item.split(': ')
-    if split[-1]!='No trough': #skipping over empty cases
-        displacementTimeList.append(split[1])
-        displacementSpeedList.append(split[3])
+    if isinstance(item, str):
+        split = item.split(': ')
+        if split[-1] != 'No trough':  # skipping over empty cases
+            displacementTimeList.append(float(split[1]))
+            displacementSpeedList.append(float(split[3]))
+    else:
+        # item is a tuple (expected format: (peak_time, displacement_diff, time_diff))
+        _, displacement_diff, time_diff = item
+        if displacement_diff is not None:
+            displacementTimeList.append(time_diff)
+            displacementSpeedList.append(displacement_diff)
 
 # Convert lists to numpy arrays
 displacementTimeList = np.array(displacementTimeList, dtype=float)

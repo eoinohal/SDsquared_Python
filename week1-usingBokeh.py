@@ -90,23 +90,23 @@ relevantForkPeaksYaxis = [yForkValues[i] for i in relevantPeaksIndices]
 
 
 # Relevant Trough Index
-relevantTroughsIndices = []
+relevantForkTroughsIndices = []
 # Iterate through the relevant peaks
 for peak_index in relevantPeaksIndices:
     # Find the first trough index that occurs after the current peak
     following_troughs = forkTroughs[forkTroughs > peak_index]  # Trough indices after the current peak
     if len(following_troughs) > 0:
-        relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
+        relevantForkTroughsIndices.append(following_troughs[0])  # Take the first trough
 
 # Get x and y points for the relevant troughs
-relevantForkTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
-relevantForkTroughsYaxis = [yForkValues[i] for i in relevantTroughsIndices]
+relevantForkTroughsXaxis = [xValues[i] for i in relevantForkTroughsIndices]
+relevantForkTroughsYaxis = [yForkValues[i] for i in relevantForkTroughsIndices]
 
 formatted_fork_differences = [
     (xValues[peak_index],yForkValues[peak_index] - yForkValues[trough_index],(yForkValues[peak_index] - yForkValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
     if trough_index is not None
     else f"{xValues[peak_index]:.3f}s: No trough found"
-    for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
+    for peak_index, trough_index in zip(relevantPeaksIndices, relevantForkTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantForkTroughsIndices)))
 ]
 
 # Calculating turning points
@@ -153,23 +153,23 @@ relevantShockPeaksYaxis = [yShockValues[i] for i in relevantShockPeaksIndices]
 
 
 # Relevant Trough Index
-relevantTroughsIndices = []
+relevantShockTroughsIndices = []
 # Iterate through the relevant peaks
 for peak_index in relevantPeaksIndices:
     # Find the first trough index that occurs after the current peak
     following_troughs = shockTroughs[shockTroughs > peak_index]  # Trough indices after the current peak
     if len(following_troughs) > 0:
-        relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
+        relevantShockTroughsIndices.append(following_troughs[0])  # Take the first trough
 
 # Get x and y points for the relevant troughs
-relevantShockTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
-relevantShockTroughsYaxis = [yShockValues[i] for i in relevantTroughsIndices]
+relevantShockTroughsXaxis = [xValues[i] for i in relevantShockTroughsIndices]
+relevantShockTroughsYaxis = [yShockValues[i] for i in relevantShockTroughsIndices]
 
 formatted_shock_differences = [
     (xValues[peak_index],yShockValues[peak_index] - yShockValues[trough_index],(yShockValues[peak_index] - yShockValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
     if trough_index is not None
     else f"{xValues[peak_index]:.3f}s: No trough found"
-    for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
+    for peak_index, trough_index in zip(relevantPeaksIndices, relevantShockTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantShockTroughsIndices)))
 ]
 
 ##--- Displacement plot graph ---##

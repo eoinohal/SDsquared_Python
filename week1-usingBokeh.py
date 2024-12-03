@@ -143,27 +143,29 @@ for peak, peak_time in zip(shockPeaks, shockPeakTimes):
         shock_displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
 
 #Relevant shock index
+# Determine relevant shock peaks based on displacement difference > 3
 relevantShockPeaksIndices = [
     shockPeaks[i]
     for i, (_, displacement_diff, _) in enumerate(shock_displacement_differences)
     if displacement_diff > 3
 ]
+
+# Get x and y points for the relevant shock peaks
 relevantShockPeaksXaxis = [xValues[i] for i in relevantShockPeaksIndices]
 relevantShockPeaksYaxis = [yShockValues[i] for i in relevantShockPeaksIndices]
 
-
-# Relevant Trough Index
+# Determine relevant shock troughs
 relevantShockTroughsIndices = []
-# Iterate through the relevant peaks
-for peak_index in relevantPeaksIndices:
+for peak_index in relevantShockPeaksIndices:
     # Find the first trough index that occurs after the current peak
-    following_troughs = shockTroughs[shockTroughs > peak_index]  # Trough indices after the current peak
+    following_troughs = shockTroughs[shockTroughs > peak_index]
     if len(following_troughs) > 0:
-        relevantShockTroughsIndices.append(following_troughs[0])  # Take the first trough
+        relevantShockTroughsIndices.append(following_troughs[0])  # First trough
 
 # Get x and y points for the relevant troughs
 relevantShockTroughsXaxis = [xValues[i] for i in relevantShockTroughsIndices]
 relevantShockTroughsYaxis = [yShockValues[i] for i in relevantShockTroughsIndices]
+
 
 formatted_shock_differences = [
     (xValues[peak_index],yShockValues[peak_index] - yShockValues[trough_index],(yShockValues[peak_index] - yShockValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))

@@ -45,13 +45,19 @@ samplePeriod = 1/sampleFrequency
 # Populating x graph (time axis) into numpy array
 xValues = np.arange(0, timeOfRun, samplePeriod)
 
-# Convert lists to numpy arrays
+# np array for fork peak and trough
 yForkValues = np.array(yForkValues, dtype=float)
 forkPeaks, _ = find_peaks(yForkValues)
 forkTroughs, _ = find_peaks(-yForkValues)
-
 forkPeakTimes = xValues[forkPeaks]
 forkTroughTimes = xValues[forkTroughs]
+
+# np array for shock peak and trough
+yShockValues = np.array(yShockValues, dtype=float)
+shockPeaks, _ = find_peaks(yShockValues)
+shockTroughs, _ = find_peaks(-yShockValues)
+shockPeakTimes = xValues[shockPeaks]
+shockTroughTimes = xValues[shockTroughs]
 
 # Initialize combined lists
 time_differences = []
@@ -222,7 +228,7 @@ compGraph.scatter(
     marker="circle",
 )
 
-# Line of best fit for shock compression
+# shock compression regression
 shockCompression = linregress(displacementTimeList, displacementSpeedList)
 y_regress = shockCompression.slope * displacementTimeList + shockCompression.intercept
 compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=2)

@@ -54,8 +54,8 @@ forkPeakTimes = xValues[forkPeaks]
 forkTroughTimes = xValues[forkTroughs]
 
 # Initialize combined lists
-time_differences = []
-displacement_differences = []
+fork_time_differences = []
+fork_displacement_differences = []
 
 # Loop through each peak
 for peak, peak_time in zip(forkPeaks, forkPeakTimes):
@@ -68,25 +68,25 @@ for peak, peak_time in zip(forkPeaks, forkPeakTimes):
 
         # Calculate the time difference
         time_diff = following_trough - peak_time
-        time_differences.append(time_diff)
+        fork_time_differences.append(time_diff)
 
         # Calculate the displacement difference
         trough_value = yForkValues[forkTroughs[np.where(forkTroughTimes == following_trough)[0][0]]]
         displacement_diff = yForkValues[peak] - trough_value
-        displacement_differences.append((peak_time, displacement_diff, time_diff))
+        fork_displacement_differences.append((peak_time, displacement_diff, time_diff))
     else:
         # Handle case where there is no following trough
-        time_differences.append(np.nan)  # NaN for no following trough
-        displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
+        fork_time_differences.append(np.nan)  # NaN for no following trough
+        fork_displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
 
 #Relevant fork index
 relevantPeaksIndices = [
     forkPeaks[i]  # Use forkPeaks indices to map back to yForkValues
-    for i, (_, displacement_diff, _) in enumerate(displacement_differences)
+    for i, (_, displacement_diff, _) in enumerate(fork_displacement_differences)
     if displacement_diff > 3
 ]
-relevantPeaksXaxis = [xValues[i] for i in relevantPeaksIndices]
-relevantPeaksYaxis = [yForkValues[i] for i in relevantPeaksIndices]
+relevantForkPeaksXaxis = [xValues[i] for i in relevantPeaksIndices]
+relevantForkPeaksYaxis = [yForkValues[i] for i in relevantPeaksIndices]
 
 
 # Relevant Trough Index
@@ -99,21 +99,78 @@ for peak_index in relevantPeaksIndices:
         relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
 
 # Get x and y points for the relevant troughs
-relevantTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
-relevantTroughsYaxis = [yForkValues[i] for i in relevantTroughsIndices]
+relevantForkTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
+relevantForkTroughsYaxis = [yForkValues[i] for i in relevantTroughsIndices]
 
-formatted_differences = [
+formatted_fork_differences = [
     (xValues[peak_index],yForkValues[peak_index] - yForkValues[trough_index],(yForkValues[peak_index] - yForkValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
     if trough_index is not None
     else f"{xValues[peak_index]:.3f}s: No trough found"
     for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
 ]
 
-
 # Calculating turning points
 yShockValues = np.array(yShockValues, dtype=float)
 shockPeaks, _ = find_peaks(yShockValues)
 shockTroughs, _ = find_peaks(-yShockValues)
+
+shockPeakTimes = xValues[shockPeaks]
+shockTroughTimes = xValues[shockTroughs]
+
+shock_time_differences = []
+shock_displacement_differences = []
+
+# Loop through each peak
+for peak, peak_time in zip(shockPeaks, shockPeakTimes):
+    # Find the first trough that occurs after the peak time
+    following_troughs = shockTroughTimes[(shockTroughTimes > peak_time)]
+
+    if len(following_troughs) > 0:
+        # Take the first following trough
+        following_trough = following_troughs[0]
+
+        # Calculate the time difference
+        time_diff = following_trough - peak_time
+        shock_time_differences.append(time_diff)
+
+        # Calculate the displacement difference
+        trough_value = yShockValues[shockTroughs[np.where(shockTroughTimes == following_trough)[0][0]]]
+        displacement_diff = yShockValues[peak] - trough_value
+        shock_displacement_differences.append((peak_time, displacement_diff, time_diff))
+    else:
+        # Handle case where there is no following trough
+        shock_time_differences.append(np.nan)  # NaN for no following trough
+        shock_displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
+
+#Relevant shock index
+relevantShockPeaksIndices = [
+    shockPeaks[i]
+    for i, (_, displacement_diff, _) in enumerate(shock_displacement_differences)
+    if displacement_diff > 3
+]
+relevantShockPeaksXaxis = [xValues[i] for i in relevantShockPeaksIndices]
+relevantShockPeaksYaxis = [yShockValues[i] for i in relevantShockPeaksIndices]
+
+
+# Relevant Trough Index
+relevantTroughsIndices = []
+# Iterate through the relevant peaks
+for peak_index in relevantPeaksIndices:
+    # Find the first trough index that occurs after the current peak
+    following_troughs = shockTroughs[shockTroughs > peak_index]  # Trough indices after the current peak
+    if len(following_troughs) > 0:
+        relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
+
+# Get x and y points for the relevant troughs
+relevantShockTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
+relevantShockTroughsYaxis = [yShockValues[i] for i in relevantTroughsIndices]
+
+formatted_shock_differences = [
+    (xValues[peak_index],yShockValues[peak_index] - yShockValues[trough_index],(yShockValues[peak_index] - yShockValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
+    if trough_index is not None
+    else f"{xValues[peak_index]:.3f}s: No trough found"
+    for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
+]
 
 ##--- Displacement plot graph ---##
 displacementGraph = figure(
@@ -137,18 +194,17 @@ displacementGraph.y_range = Range1d(start=0, end=100, bounds=(0, 100))
 # Rendering Fork line + Points
 displacementGraph.line(xValues, yForkValues, legend_label="Front Fork", color="#00FFFF", line_width=0.5)
 displacementGraph.scatter(
-    relevantPeaksXaxis,
-    relevantPeaksYaxis,
+    relevantForkPeaksXaxis,
+    relevantForkPeaksYaxis,
     color="red",
     size=2,  # Slightly larger for clarity
     legend_label="Fork Peaks",
     marker="circle",
 )
 
-
 displacementGraph.scatter(
-    relevantTroughsXaxis,
-    relevantTroughsYaxis,
+    relevantForkTroughsXaxis,
+    relevantForkTroughsYaxis,
     color="orange",
     size=2,
     legend_label="Fork Troughs",
@@ -158,16 +214,16 @@ displacementGraph.scatter(
 # Rendering Shock line + Points
 displacementGraph.line(xValues, yShockValues, legend_label="Rear Shock", color="#FF9500", line_width=0.5)
 displacementGraph.scatter(
-    xValues[shockPeaks],
-    yShockValues[shockPeaks],
+    relevantShockPeaksXaxis,
+    relevantShockPeaksYaxis,
     color="red",
     size=2,
     legend_label="Shock Peaks",
     marker="circle",
 )
 displacementGraph.scatter(
-    xValues[shockTroughs],
-    yShockValues[shockTroughs],
+    relevantShockTroughsXaxis,
+    relevantShockTroughsYaxis,
     color="orange",
     size=2,
     legend_label="Shock Troughs",
@@ -177,25 +233,45 @@ displacementGraph.scatter(
 
 ####------------------------- Scatter Plot -------------------------####
 
-# Determine Shock Compression
-displacementTimeList = []
-displacementSpeedList = []
-for item in formatted_differences:
+# Determine Fork Compression
+forkDisplacementTimeList = []
+forkDisplacementSpeedList = []
+for item in formatted_fork_differences:
     if isinstance(item, str):
         split = item.split(': ')
         if split[-1] != 'No trough':  # skipping over empty cases
-            displacementTimeList.append(float(split[1]))
-            displacementSpeedList.append(float(split[3]))
+            forkDisplacementTimeList.append(float(split[1]))
+            forkDisplacementSpeedList.append(float(split[3]))
     else:
         # item is a tuple (expected format: (peak_time, displacement_diff, time_diff))
         _, displacement_diff, time_diff = item
         if displacement_diff is not None:
-            displacementTimeList.append(time_diff)
-            displacementSpeedList.append(displacement_diff)
+            forkDisplacementTimeList.append(time_diff)
+            forkDisplacementSpeedList.append(displacement_diff)
 
 # Convert lists to numpy arrays
-displacementTimeList = np.array(displacementTimeList, dtype=float)
-displacementSpeedList = np.array(displacementSpeedList, dtype=float)
+forkDisplacementTimeList = np.array(forkDisplacementTimeList, dtype=float)
+forkDisplacementSpeedList = np.array(forkDisplacementSpeedList, dtype=float)
+
+# Determine Shock Compression
+shockDisplacementTimeList = []
+shockDisplacementSpeedList = []
+for item in formatted_fork_differences:
+    if isinstance(item, str):
+        split = item.split(': ')
+        if split[-1] != 'No trough':  # skipping over empty cases
+            shockDisplacementTimeList.append(float(split[1]))
+            shockDisplacementSpeedList.append(float(split[3]))
+    else:
+        # item is a tuple (expected format: (peak_time, displacement_diff, time_diff))
+        _, displacement_diff, time_diff = item
+        if displacement_diff is not None:
+            shockDisplacementTimeList.append(time_diff)
+            shockDisplacementSpeedList.append(displacement_diff)
+
+# Convert lists to numpy arrays
+shockDisplacementTimeList = np.array(shockDisplacementTimeList, dtype=float)
+shockDisplacementSpeedList = np.array(shockDisplacementSpeedList, dtype=float)
 
 ##--- Compression scatter graph ---##
 compGraph = figure(
@@ -209,24 +285,28 @@ compGraph = figure(
 compGraph.toolbar.logo = None
 
 # Limit axis movement
-compGraph.x_range = Range1d(start=0, end=max(displacementTimeList)*1.2, bounds=(0, max(displacementTimeList)*1.1))
-compGraph.y_range = Range1d(start=0, end=max(displacementSpeedList)*1.2, bounds=(0, max(displacementSpeedList)*1.1))
+compGraph.x_range = Range1d(start=0, end=max(forkDisplacementTimeList)*1.2, bounds=(0, max(forkDisplacementTimeList)*1.1))
+compGraph.y_range = Range1d(start=0, end=max(forkDisplacementSpeedList)*1.2, bounds=(0, max(forkDisplacementSpeedList)*1.1))
 
 # shock compression scatter
 compGraph.scatter(
-    displacementTimeList,
-    displacementSpeedList,
+    forkDisplacementTimeList,
+    forkDisplacementSpeedList,
     color="orange",
     size=4,
     legend_label="shock compression",
     marker="circle",
 )
 
-# Line of best fit for shock compression
-shockCompression = linregress(displacementTimeList, displacementSpeedList)
-y_regress = shockCompression.slope * displacementTimeList + shockCompression.intercept
-compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=2)
+# Line of best fit for fork compression
+forkCompression = linregress(forkDisplacementTimeList, forkDisplacementSpeedList)
+fork_y_regress = forkCompression.slope * forkDisplacementTimeList + forkCompression.intercept
+compGraph.line(x=forkDisplacementTimeList, y=fork_y_regress, color='red', legend_label="fork regression", line_width=2)
 
+# Line of best fit for shock compression
+shockCompression = linregress(shockDisplacementTimeList, shockDisplacementSpeedList)
+shock_y_regress = shockCompression.slope * shockDisplacementTimeList + shockCompression.intercept
+compGraph.line(x=shockDisplacementTimeList, y=shock_y_regress, color='red', legend_label="shock regression", line_width=2)
 ####------------------------- HTML Readings -------------------------####
 
 # Display stats as HTML below the plot - Useful for debugging
@@ -236,10 +316,6 @@ stats_div = Div(
     <p><b>Max:</b> {shockMax:.2f} mm<br><b>Min:</b> {shockMin:.2f} mm<br><b>Mean:</b> {shockMean:.2f} mm</p>
     <h3>Fork Values:</h3>
     <p><b>Max:</b> {forkMax:.2f} mm<br><b>Min:</b> {forkMin:.2f} mm<br><b>Mean:</b> {forkMean:.2f} mm</p>
-    <h3>Fork Displacement Differences:</h3>
-    <ul>
-    {''.join(f'<li>{item}</li>' for item in formatted_differences)}
-    </ul>
     """,
     sizing_mode="stretch_width",
 )

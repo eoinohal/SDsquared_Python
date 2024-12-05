@@ -2,13 +2,57 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
 from bokeh.models import Range1d, Div
-from bokeh.layouts import Column
+from bokeh.layouts import column, grid
 import numpy as np
-from scipy.signal import find_peaks
 from scipy.stats import linregress
 
+from test import forkCompressionData
 
-# Text file data is retreived from
+
+# Functions arr1 (start-point) arr2 (end-point)
+def find_displacement_speed(arr1, arr2, arr1_times, arr2_times, start):
+    times = []
+    speeds = []
+    displacements = []
+    for i in range(len(arr1)-2):
+        val1 = arr1[i];time1 = arr1_times[i]
+        if start: #start is boolean to ensure
+            val2 = arr2[i];time2 = arr2_times[i]
+        else:
+            val2 = arr2[i+1];time2 = arr2_times[i+1]
+        displacement = abs(val2 - val1)
+        if displacement > 1:  # Remove
+            times.append(time2)
+            speeds.append(abs(displacement / (time2 - time1)))
+            displacements.append(displacement)
+    return times, speeds, displacements
+
+def turning_points(array,acceptance): #Index of points of 1d array
+    idx_max, idx_min = [], []
+
+    NEUTRAL, RISING, FALLING = range(3)
+    def get_state(a, b):
+        if a > b and (a-b)>acceptance: return RISING
+        if a < b and (b-a)>acceptance: return FALLING
+        return NEUTRAL
+
+    ps = get_state(array[0], array[1])
+    begin = 1
+    for i in range(2, len(array)):
+        s = get_state(array[i - 1], array[i])
+        if s != NEUTRAL:
+            if ps != NEUTRAL and ps != s:
+                if s == FALLING:
+                    idx_max.append((begin + i - 1) // 2)
+                else:
+                    idx_min.append((begin + i - 1) // 2)
+            begin = i
+            ps = s
+
+    return idx_min, idx_max
+
+
+# Text file data is retrieved from
 textFile = "TestRun1.TXT"
 
 # Graph theme
@@ -45,81 +89,53 @@ samplePeriod = 1/sampleFrequency
 # Populating x graph (time axis) into numpy array
 xValues = np.arange(0, timeOfRun, samplePeriod)
 
+####------------------------- Fork -------------------------####
+
 # np array for fork peak and trough
 yForkValues = np.array(yForkValues, dtype=float)
-forkPeaks, _ = find_peaks(yForkValues)
-forkTroughs, _ = find_peaks(-yForkValues)
-forkPeakTimes = xValues[forkPeaks]
-forkTroughTimes = xValues[forkTroughs]
+forkPeaksIndexes, _ = turning_points(yForkValues,0.01) #acceptance set to 0 for most accurate readings - vibrations factored out in find_displacement_speed function
+forkTroughsIndexes, _ = turning_points(-yForkValues,0.01) #change to be higher for clearer graph
+forkPeaks = [yForkValues[i] for i in forkPeaksIndexes]
+forkTroughs = [yForkValues[i] for i in forkTroughsIndexes]
+forkPeakTimes = xValues[forkPeaksIndexes]
+forkTroughTimes = xValues[forkTroughsIndexes]
+
+# Fork compression
+forkCompressionData = find_displacement_speed(forkPeaks,forkTroughs,forkPeakTimes,forkTroughTimes,(forkPeaksIndexes[0]>forkTroughsIndexes[0]))
+forkCompressionTimes  = np.array(forkCompressionData[0], dtype=float)
+forkCompressionSpeed = np.array(forkCompressionData[1], dtype=float)
+forkCompressionDisplacement = np.array(forkCompressionData[2], dtype=float)
+# Fork rebound
+forkReboundData = find_displacement_speed(forkTroughs, forkPeaks, forkTroughTimes, forkPeakTimes, (forkTroughsIndexes[0]>forkPeaksIndexes[0]))
+forkReboundTimes = np.array(forkReboundData[0], dtype=float)
+forkReboundSpeed = np.array(forkReboundData[1], dtype=float)
+forkReboundDisplacement = np.array(forkReboundData[2], dtype=float)
+
+####------------------------- Shock -------------------------####
 
 # np array for shock peak and trough
 yShockValues = np.array(yShockValues, dtype=float)
-shockPeaks, _ = find_peaks(yShockValues)
-shockTroughs, _ = find_peaks(-yShockValues)
-shockPeakTimes = xValues[shockPeaks]
-shockTroughTimes = xValues[shockTroughs]
+shockPeaksIndexes, _ = turning_points(yShockValues,0.01)
+shockTroughsIndexes, _ = turning_points(-yShockValues,0.01)
+shockPeaks = [yShockValues[i] for i in shockPeaksIndexes]
+shockTroughs = [yShockValues[i] for i in shockTroughsIndexes]
+shockPeakTimes = xValues[shockPeaksIndexes]
+shockTroughTimes = xValues[shockTroughsIndexes]
 
-# Initialize combined lists
-time_differences = []
-displacement_differences = []
+# shock compression
+shockCompressionData = find_displacement_speed(shockPeaks,shockTroughs,shockPeakTimes,shockTroughTimes, (shockPeaksIndexes[0]>shockTroughsIndexes[0]))
+shockCompressionTimes = np.array(shockCompressionData[0], dtype=float)
+shockCompressionSpeed = np.array(shockCompressionData[1], dtype=float)
+shockCompressionDisplacement = np.array(shockCompressionData[2], dtype=float)
+# shock rebound
+shockReboundData = find_displacement_speed(shockPeaks,shockTroughs,shockPeakTimes,shockTroughTimes, (shockPeaksIndexes[0]>shockTroughsIndexes[0]))
+shockReboundTimes = np.array(shockReboundData[0], dtype=float)
+shockReboundSpeed = np.array(shockReboundData[1], dtype=float)
+shockReboundDisplacement = np.array(shockReboundData[2], dtype=float)
 
-# Loop through each peak
-for peak, peak_time in zip(forkPeaks, forkPeakTimes):
-    # Find the first trough that occurs after the peak time
-    following_troughs = forkTroughTimes[(forkTroughTimes > peak_time)]
-
-    if len(following_troughs) > 0:
-        # Take the first following trough
-        following_trough = following_troughs[0]
-
-        # Calculate the time difference
-        time_diff = following_trough - peak_time
-        time_differences.append(time_diff)
-
-        # Calculate the displacement difference
-        trough_value = yForkValues[forkTroughs[np.where(forkTroughTimes == following_trough)[0][0]]]
-        displacement_diff = yForkValues[peak] - trough_value
-        displacement_differences.append((peak_time, displacement_diff, time_diff))
-    else:
-        # Handle case where there is no following trough
-        time_differences.append(np.nan)  # NaN for no following trough
-        displacement_differences.append((peak_time, np.nan, np.nan))  # NaN for no following trough
-
-#Relevant fork index
-relevantPeaksIndices = [
-    forkPeaks[i]  # Use forkPeaks indices to map back to yForkValues
-    for i, (_, displacement_diff, _) in enumerate(displacement_differences)
-    if displacement_diff > 3
-]
-relevantPeaksXaxis = [xValues[i] for i in relevantPeaksIndices]
-relevantPeaksYaxis = [yForkValues[i] for i in relevantPeaksIndices]
-
-
-# Relevant Trough Index
-relevantTroughsIndices = []
-# Iterate through the relevant peaks
-for peak_index in relevantPeaksIndices:
-    # Find the first trough index that occurs after the current peak
-    following_troughs = forkTroughs[forkTroughs > peak_index]  # Trough indices after the current peak
-    if len(following_troughs) > 0:
-        relevantTroughsIndices.append(following_troughs[0])  # Take the first trough
-
-# Get x and y points for the relevant troughs
-relevantTroughsXaxis = [xValues[i] for i in relevantTroughsIndices]
-relevantTroughsYaxis = [yForkValues[i] for i in relevantTroughsIndices]
-
-formatted_differences = [
-    (xValues[peak_index],yForkValues[peak_index] - yForkValues[trough_index],(yForkValues[peak_index] - yForkValues[trough_index]) / (xValues[trough_index] - xValues[peak_index]))
-    if trough_index is not None
-    else f"{xValues[peak_index]:.3f}s: No trough found"
-    for peak_index, trough_index in zip(relevantPeaksIndices, relevantTroughsIndices + [None] * (len(relevantPeaksIndices) - len(relevantTroughsIndices)))
-]
-
-
-# Calculating turning points
-yShockValues = np.array(yShockValues, dtype=float)
-shockPeaks, _ = find_peaks(yShockValues)
-shockTroughs, _ = find_peaks(-yShockValues)
+# Data analysis
+shockMax, shockMin, shockMean = yShockValues.max(), yShockValues.min(), yShockValues.mean()
+forkMax, forkMin, forkMean = yForkValues.max(), yForkValues.min(), yForkValues.mean()
 
 ##--- Displacement plot graph ---##
 displacementGraph = figure(
@@ -130,11 +146,6 @@ displacementGraph = figure(
     y_axis_label="Percentage displacement (%)",
     tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
 )
-displacementGraph.toolbar.logo = None
-
-# Data analysis
-shockMax, shockMin, shockMean = yShockValues.max(), yShockValues.min(), yShockValues.mean()
-forkMax, forkMin, forkMean = yForkValues.max(), yForkValues.min(), yForkValues.mean()
 
 # Limit axis movement
 displacementGraph.x_range = Range1d(start=0, end=timeOfRun, bounds=(0, timeOfRun)) # Display whole time range
@@ -142,19 +153,20 @@ displacementGraph.y_range = Range1d(start=0, end=100, bounds=(0, 100))
 
 # Rendering Fork line + Points
 displacementGraph.line(xValues, yForkValues, legend_label="Front Fork", color="#00FFFF", line_width=0.5)
+# Fork peaks
 displacementGraph.scatter(
-    relevantPeaksXaxis,
-    relevantPeaksYaxis,
+    forkPeakTimes,
+    forkPeaks,
     color="red",
     size=2,  # Slightly larger for clarity
     legend_label="Fork Peaks",
     marker="circle",
 )
 
-
+#Fork troughs
 displacementGraph.scatter(
-    relevantTroughsXaxis,
-    relevantTroughsYaxis,
+    forkTroughTimes,
+    forkTroughs,
     color="orange",
     size=2,
     legend_label="Fork Troughs",
@@ -163,17 +175,19 @@ displacementGraph.scatter(
 
 # Rendering Shock line + Points
 displacementGraph.line(xValues, yShockValues, legend_label="Rear Shock", color="#FF9500", line_width=0.5)
+#Shock peaks
 displacementGraph.scatter(
-    xValues[shockPeaks],
-    yShockValues[shockPeaks],
+    shockPeakTimes,
+    shockPeaks,
     color="red",
     size=2,
     legend_label="Shock Peaks",
     marker="circle",
 )
+#Shock troughs
 displacementGraph.scatter(
-    xValues[shockTroughs],
-    yShockValues[shockTroughs],
+    shockTroughTimes,
+    shockTroughs,
     color="orange",
     size=2,
     legend_label="Shock Troughs",
@@ -181,27 +195,7 @@ displacementGraph.scatter(
 )
 
 
-####------------------------- Scatter Plot -------------------------####
-
-# Determine Shock Compression
-displacementTimeList = []
-displacementSpeedList = []
-for item in formatted_differences:
-    if isinstance(item, str):
-        split = item.split(': ')
-        if split[-1] != 'No trough':  # skipping over empty cases
-            displacementTimeList.append(float(split[1]))
-            displacementSpeedList.append(float(split[3]))
-    else:
-        # item is a tuple (expected format: (peak_time, displacement_diff, time_diff))
-        _, displacement_diff, time_diff = item
-        if displacement_diff is not None:
-            displacementTimeList.append(time_diff)
-            displacementSpeedList.append(displacement_diff)
-
-# Convert lists to numpy arrays
-displacementTimeList = np.array(displacementTimeList, dtype=float)
-displacementSpeedList = np.array(displacementSpeedList, dtype=float)
+####------------------------- Scatter Plots -------------------------####
 
 ##--- Compression scatter graph ---##
 compGraph = figure(
@@ -212,16 +206,30 @@ compGraph = figure(
     y_axis_label="Absolute change in displacement (%)",
     tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
 )
-compGraph.toolbar.logo = None
 
 # Limit axis movement
-compGraph.x_range = Range1d(start=0, end=max(displacementTimeList)*1.2, bounds=(0, max(displacementTimeList)*1.1))
-compGraph.y_range = Range1d(start=0, end=max(displacementSpeedList)*1.2, bounds=(0, max(displacementSpeedList)*1.1))
+compGraph.x_range = Range1d(start=0, end=max(max(forkCompressionSpeed),max(shockCompressionSpeed))*1.1, bounds=(0, max(max(forkCompressionSpeed),max(shockCompressionSpeed))*1.1))
+compGraph.y_range = Range1d(start=0, end=max(max(forkCompressionDisplacement),max(shockCompressionDisplacement))*1.1, bounds=(0, max(max(forkCompressionDisplacement),max(shockCompressionDisplacement))*1.1))
+
+# fork compression scatter
+compGraph.scatter(
+    forkCompressionSpeed,
+    forkCompressionDisplacement,
+    color="blue",
+    size=4,
+    legend_label="fork compression",
+    marker="circle",
+)
+
+# fork compression regression
+forkCompression = linregress(forkCompressionDisplacement, forkCompressionSpeed)
+forkCompression_regress = forkCompression.slope * forkCompressionDisplacement + forkCompression.intercept
+compGraph.line(x=forkCompression_regress, y=forkCompressionDisplacement, color='#00FFFF', legend_label="fork regression", line_width=2)
 
 # shock compression scatter
 compGraph.scatter(
-    displacementTimeList,
-    displacementSpeedList,
+    shockCompressionSpeed,
+    shockCompressionDisplacement,
     color="orange",
     size=4,
     legend_label="shock compression",
@@ -229,32 +237,76 @@ compGraph.scatter(
 )
 
 # shock compression regression
-shockCompression = linregress(displacementTimeList, displacementSpeedList)
-y_regress = shockCompression.slope * displacementTimeList + shockCompression.intercept
-compGraph.line(x=displacementTimeList, y=y_regress, color='red', legend_label="shock regression", line_width=2)
+shockCompression = linregress(shockCompressionDisplacement, shockCompressionSpeed)
+shockCompression_regress = shockCompression.slope * shockCompressionDisplacement + shockCompression.intercept
+compGraph.line(x=shockCompression_regress, y=shockCompressionDisplacement, color='red', legend_label="shock regression", line_width=2)
+
+
+##--- Rebound scatter graph ---##
+rebGraph = figure(
+    title="Rebound Scatter Plot: " + textFile,
+    sizing_mode="stretch_width",
+    height=450,
+    width=100,
+    x_axis_label="Speed of displacement (%/s)",
+    y_axis_label="Absolute change in displacement (%)",
+    tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
+)
+
+# Limit axis movement
+rebGraph.x_range = Range1d(start=0, end=max(max(forkReboundSpeed),max(shockReboundSpeed))*1.1, bounds=(0, max(max(forkReboundSpeed),max(shockReboundSpeed))*1.1))
+rebGraph.y_range = Range1d(start=0, end=max(max(forkReboundDisplacement),max(shockReboundDisplacement))*1.1, bounds=(0, max(max(forkReboundDisplacement),max(shockReboundDisplacement))*1.1))
+
+# fork Rebound scatter
+rebGraph.scatter(
+    forkReboundSpeed,
+    forkReboundDisplacement,
+    color="blue",
+    size=4,
+    legend_label="fork rebound",
+    marker="circle",
+)
+
+# fork Rebound regression
+forkRebound = linregress(forkReboundDisplacement, forkReboundSpeed)
+forkRebound_regress = forkRebound.slope * forkReboundDisplacement + forkRebound.intercept
+rebGraph.line(x=forkRebound_regress, y=forkReboundDisplacement, color='#00FFFF', legend_label="fork regression", line_width=2)
+
+# shock Rebound scatter
+rebGraph.scatter(
+    shockReboundSpeed,
+    shockReboundDisplacement,
+    color="orange",
+    size=4,
+    legend_label="shock rebound",
+    marker="circle",
+)
+
+# shock Rebound regression
+shockRebound = linregress(shockReboundDisplacement, shockReboundSpeed)
+shockRebound_regress = shockRebound.slope * shockReboundDisplacement + shockRebound.intercept
+rebGraph.line(x=shockRebound_regress, y=shockReboundDisplacement, color='red', legend_label="shock regression", line_width=2)
 
 ####------------------------- HTML Readings -------------------------####
 
 # Display stats as HTML below the plot - Useful for debugging
 stats_div = Div(
     text=f"""
-    <h3>Shock Values:</h3>
-    <p><b>Max:</b> {shockMax:.2f} mm<br><b>Min:</b> {shockMin:.2f} mm<br><b>Mean:</b> {shockMean:.2f} mm</p>
     <h3>Fork Values:</h3>
-    <p><b>Max:</b> {forkMax:.2f} mm<br><b>Min:</b> {forkMin:.2f} mm<br><b>Mean:</b> {forkMean:.2f} mm</p>
-    <h3>Fork Displacement Differences:</h3>
-    <ul>
-    {''.join(f'<li>{item}</li>' for item in formatted_differences)}
-    </ul>
+    <p><b>Max:</b> {forkMax:.2f} mm<br><b>Min:</b> {forkMin:.2f} mm<br><b>Mean:</b> {forkMean:.2f} mm 
+    <h3>Shock Values:</h3>
+    <p><b>Max:</b> {shockMax:.2f} mm<br><b>Min:</b> {shockMin:.2f} mm<br><b>Mean:</b> {shockMean:.2f} mm 
     """,
     sizing_mode="stretch_width",
 )
 
+
 ####------------------------- Rendering -------------------------####
 
 # Combine graphs into a dashboard layout
-displacementGraph.legend.click_policy = "hide"; compGraph.legend.click_policy = "hide"
-layout = Column(displacementGraph, compGraph, stats_div, sizing_mode="stretch_both")
+displacementGraph.toolbar.logo = None; rebGraph.toolbar.logo = None; compGraph.toolbar.logo = None
+displacementGraph.legend.click_policy = "hide"; compGraph.legend.click_policy = "hide"; rebGraph.legend.click_policy = "hide"
+dashboardLayout = grid([[displacementGraph], [compGraph, rebGraph], [stats_div]],sizing_mode='stretch_both')
 
 # Show the plot with stats
-show(layout)
+show(dashboardLayout)

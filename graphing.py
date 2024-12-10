@@ -6,7 +6,6 @@ from bokeh.layouts import column, grid
 import numpy as np
 from scipy.stats import linregress
 
-from test import forkCompressionData
 
 
 # Functions arr1 (start-point) arr2 (end-point)
@@ -59,7 +58,7 @@ textFile = "TestRun1.TXT"
 curdoc().theme = "dark_minimal"
 
 # Travel constants
-FORK_TRAVEL = 170; SHOCK_TRAVEL = 170; BIT_RANGE = 1024 #Bitrange is range of measured values
+FORK_TRAVEL = 170; SHOCK_TRAVEL = 160; BIT_RANGE = 1024 #Bitrange is range of measured values
 
 # Lists which populate graph
 xValues = []; yForkValues = []; yShockValues = []
@@ -76,8 +75,8 @@ with open(textFile, "r") as file:
         accelerometerList = accelerometerInstance.split(",")
         if len(accelerometerList) != 1:
             # Calculating percentage from Bit range
-            yShockValues.append(((float(accelerometerList[6])-initialShockDisplacement)/BIT_RANGE)*100)  # Rear shock
-            yForkValues.append(((float(accelerometerList[7])-initialForkDisplacement)/BIT_RANGE)*100)  # Front fork
+            yShockValues.append(((float(accelerometerList[6])-initialShockDisplacement)/BIT_RANGE)*SHOCK_TRAVEL)  # Rear shock
+            yForkValues.append(((float(accelerometerList[7])-initialForkDisplacement)/BIT_RANGE)*FORK_TRAVEL)  # Front fork
         else:
             if accelerometerInstance!='Run finished\n': # Footer with time of run value
                 timeOfRun = int(accelerometerInstance)/1000
@@ -93,8 +92,8 @@ xValues = np.arange(0, timeOfRun, samplePeriod)
 
 # np array for fork peak and trough
 yForkValues = np.array(yForkValues, dtype=float)
-forkPeaksIndexes, _ = turning_points(yForkValues,0.01) #acceptance set to 0 for most accurate readings - vibrations factored out in find_displacement_speed function
-forkTroughsIndexes, _ = turning_points(-yForkValues,0.01) #change to be higher for clearer graph
+forkPeaksIndexes, _ = turning_points(yForkValues,0.1) #acceptance set to 0 for most accurate readings - vibrations factored out in find_displacement_speed function
+forkTroughsIndexes, _ = turning_points(-yForkValues,0.1) #change to be higher for clearer graph
 forkPeaks = [yForkValues[i] for i in forkPeaksIndexes]
 forkTroughs = [yForkValues[i] for i in forkTroughsIndexes]
 forkPeakTimes = xValues[forkPeaksIndexes]
@@ -115,8 +114,8 @@ forkReboundDisplacement = np.array(forkReboundData[2], dtype=float)
 
 # np array for shock peak and trough
 yShockValues = np.array(yShockValues, dtype=float)
-shockPeaksIndexes, _ = turning_points(yShockValues,0.01)
-shockTroughsIndexes, _ = turning_points(-yShockValues,0.01)
+shockPeaksIndexes, _ = turning_points(yShockValues,0.1)
+shockTroughsIndexes, _ = turning_points(-yShockValues,0.1)
 shockPeaks = [yShockValues[i] for i in shockPeaksIndexes]
 shockTroughs = [yShockValues[i] for i in shockTroughsIndexes]
 shockPeakTimes = xValues[shockPeaksIndexes]

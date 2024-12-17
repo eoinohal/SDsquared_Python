@@ -1,3 +1,6 @@
+#  python -m bokeh serve --show graphing.py to run the server, once in file tree
+
+
 # Imports
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
@@ -307,5 +310,5 @@ displacementGraph.toolbar.logo = None; rebGraph.toolbar.logo = None; compGraph.t
 displacementGraph.legend.click_policy = "hide"; compGraph.legend.click_policy = "hide"; rebGraph.legend.click_policy = "hide"
 dashboardLayout = grid([[displacementGraph], [compGraph, rebGraph], [stats_div]],sizing_mode='stretch_both')
 
-# Show the plot with stats
-show(dashboardLayout)
+
+curdoc().add_root(dashboardLayout)

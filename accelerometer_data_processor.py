@@ -148,7 +148,7 @@ def format_data(shock, fork):
     for i in range(5):
         text += f"{names[i]}\t{round(shock[i], 2)}\t\t{round(fork[i], 2)}\n"
 
-    text += f"\nCOMP DIFF:\t\t{round(fork[3] - shock[3], 2)}\nREBOUND DIFF:\t\t{round(fork[4] - shock[4], 2)}"
+    text += f"\nCOMP DIFF:\t\t{round(fork[3] - shock[3], 2)}\nREBO DIFF:\t\t{round(fork[4] - shock[4], 2)}"
 
     return text
 

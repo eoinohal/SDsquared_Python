@@ -1,0 +1,15 @@
+Tasks:
+
+Test all functions:
+    -   Fix shock rebound/compression
+
+Add live data processing functionality:
+    -   Process data live
+    -   Return values live
+
+Implement 'change' function:
+    -   Look at compression differences and rebound differences and output changes to be made
+
+Fix bit range disparity
+    -   Measure length of fork/shock measurement apparatus
+    -   Use disparity between fork/sock length and apparatus to fix measured bit range

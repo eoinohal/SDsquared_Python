@@ -108,9 +108,8 @@ def create_stats_div(data):
     stats_div = Div(text=html_content)
     return stats_div
 
-def main():
+def main(text_file):
     # Load and process data
-    text_file = "TestRun1.TXT"
     data = load_and_process_data(text_file)
 
     # Create plots
@@ -137,4 +136,4 @@ def main():
     show(dashboard_layout)
 
 if __name__ == "__main__":
-    main()
+    main("TestRun1.TXT")

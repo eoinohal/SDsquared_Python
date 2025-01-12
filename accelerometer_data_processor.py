@@ -1,4 +1,5 @@
 def find_displacement_speed(arr1, arr2, arr1_times, arr2_times, start):
+    # Uses gradient between turning points to find time, total displacement and speed of compression/rebound
     times, speeds, displacements = [], [], []
 
     for i in range(len(arr1) - 2):
@@ -20,6 +21,7 @@ def find_displacement_speed(arr1, arr2, arr1_times, arr2_times, start):
 
 
 def turning_points(array, acceptance):
+    # Returns all indexes of turning points in 1D array. Acceptance is the minimum change for turning point to be not considered vibration
     idx_max, idx_min = [], []
 
     NEUTRAL, RISING, FALLING = range(3)
@@ -48,6 +50,7 @@ def turning_points(array, acceptance):
 
 
 def process_accelerometer_file(file):
+    # Main function to process file into dict of key values
     FORK_TRAVEL = 170; SHOCK_TRAVEL = 160; BIT_RANGE = 1024
 
     with open(file, "r") as f:
@@ -74,6 +77,7 @@ def process_accelerometer_file(file):
     textData = format_data(shock[0], fork[0])
 
     return {
+        # Dict of key values
         "textData": textData,
         "timeOfRun": timeOfRun,
         "xValues": xValues,
@@ -103,6 +107,7 @@ def process_accelerometer_file(file):
 
 
 def get_line_data(x, y):
+    # Function processes individual line (fork and shock split)
     peakIndexes, _ = turning_points(y, 0.1)
     troughIndexes, _ = turning_points([-val for val in y], 0.1)
     peaks = [y[i] for i in peakIndexes]
@@ -118,6 +123,7 @@ def get_line_data(x, y):
 
 
 def get_compression_and_rebound(a, b, c, d, start):
+    # Determines regression of turning points (once split into compression and rebound). Returns model for plot and variables for processing
     data = find_displacement_speed(a, b, c, d, start)
     times = data[0]
     speed = data[1]
@@ -129,6 +135,7 @@ def get_compression_and_rebound(a, b, c, d, start):
 
 
 def linear_regression(x, y):
+    # Determines linear regression of scatter
     n = len(x)
     sum_x = sum(x)
     sum_y = sum(y)
@@ -142,6 +149,7 @@ def linear_regression(x, y):
 
 
 def format_data(shock, fork):
+    # Formats key variables in clean way for text output
     text = "\n\t\t\tSHOCK:\t\tFORK:\n"
     names = ['Max:\t\t', 'Min:\t\t', 'Mean:\t\t', 'Comp:\t\t', 'Rebound:\t']
 
@@ -151,6 +159,7 @@ def format_data(shock, fork):
     text += f"\nCOMP DIFF:\t\t{round(fork[3] - shock[3], 2)}\nREBO DIFF:\t\t{round(fork[4] - shock[4], 2)}"
 
     return text
+
 
 def main(file_name):
     result = process_accelerometer_file(file_name)

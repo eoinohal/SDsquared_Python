@@ -1,24 +1,28 @@
-def find_displacement_speed(arr1, arr2, arr1_times, arr2_times, start):
+def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
     # Uses gradient between turning points to find time, total displacement and speed of compression/rebound
+    # compression = (peaks, troughs) and rebound = (troughs, peaks)
     times, speeds, displacements = [], [], []
 
-    for i in range(len(arr1) - 2):
+    # Determine starting point in second array
+    for i, value in enumerate(arr2_times):
+        if value > arr1_times[0]:
+            startIndex = i
+            break
+            
+    itterations = min(len(arr1), len(arr2)-startIndex)
+
+    for i in range(itterations):
         val1 = arr1[i]
         time1 = arr1_times[i]
-        if start:
-            val2 = arr2[i]
-            time2 = arr2_times[i]
-        else:
-            val2 = arr2[i + 1]
-            time2 = arr2_times[i + 1]
+        val2 = arr2[i+startIndex]
+        time2 = arr2_times[i+startIndex]
         displacement = abs(val2 - val1)
-        if displacement > 1:  # Filter out small displacements
-            times.append(time2)
+        if displacement > 1:  # Filter out small displacements (vibrations)
+            times.append(time1)
             speeds.append(abs(displacement / (time2 - time1)))
             displacements.append(displacement)
 
     return times, speeds, displacements
-
 
 def turning_points(array, acceptance):
     # Returns all indexes of turning points in 1D array. Acceptance is the minimum change for turning point to be not considered vibration
@@ -89,7 +93,7 @@ def process_accelerometer_file(file):
         "forkTroughs": fork[1][3],
         "forkCompressionSpeed": fork[2][0],
         "forkCompressionDisplacement": fork[2][1],
-        "forkCompression_regress": fork[2][1],
+        "forkCompression_regress": fork[2][2],
         "forkReboundSpeed": fork[3][0],
         "forkReboundDisplacement": fork[3][1],
         "forkRebound_regress": fork[3][2],
@@ -115,16 +119,16 @@ def get_line_data(x, y):
     peakTimes = [x[i] for i in peakIndexes]
     troughTimes = [x[i] for i in troughIndexes]
 
-    compression = get_compression_and_rebound(peaks, troughs, peakTimes, troughTimes, (peakIndexes[0] > troughIndexes[0]))
-    rebound = get_compression_and_rebound(troughs, peaks, troughTimes, peakTimes, (peakIndexes[0] > troughIndexes[0]))
+    compression = get_compression_and_rebound(troughs, peaks, troughTimes, peakTimes)
+    rebound = get_compression_and_rebound(peaks, troughs, peakTimes, troughTimes)
 
     # Data for text, peaks and troughs, compression, rebound
     return [max(y), min(y), sum(y) / len(y), compression[0], rebound[0]], [peakTimes, peaks, troughTimes, troughs], compression[1], rebound[1]
 
 
-def get_compression_and_rebound(a, b, c, d, start):
+def get_compression_and_rebound(a, b, c, d):
     # Determines regression of turning points (once split into compression and rebound). Returns model for plot and variables for processing
-    data = find_displacement_speed(a, b, c, d, start)
+    data = find_displacement_speed(a, b, c, d)
     times = data[0]
     speed = data[1]
     displacement = data[2]

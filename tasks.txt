@@ -1,8 +1,5 @@
 Tasks:
 
-Test all functions:
-    -   Fix shock rebound/compression
-
 Add live data processing functionality:
     -   Process data live
     -   Return values live

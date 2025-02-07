@@ -133,7 +133,6 @@ def main(text_file):
 
     # Set theme and display
     curdoc().theme = "dark_minimal"
-    show(dashboard_layout)
+    curdoc().add_root(dashboard_layout)
 
-if __name__ == "__main__":
-    main("TestRun1.TXT")
+main("TestRun1.TXT")

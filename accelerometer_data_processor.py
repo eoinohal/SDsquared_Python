@@ -1,3 +1,6 @@
+import os.path
+
+
 def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
     # Uses gradient between turning points to find time, total displacement and speed of compression/rebound
     # compression = (peaks, troughs) and rebound = (troughs, peaks)
@@ -56,6 +59,10 @@ def turning_points(array, acceptance):
 def process_accelerometer_file(file):
     # Main function to process file into dict of key values
     FORK_TRAVEL = 170; SHOCK_TRAVEL = 160; BIT_RANGE = 1024
+    if not os.path.exists(file):
+        print(f"File '{file}' not found")
+        return None
+
 
     with open(file, "r") as f:
         lineCount = len(f.readlines()) - 4  # Discount header and footer

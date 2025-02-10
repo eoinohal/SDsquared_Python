@@ -1,7 +1,7 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
-from bokeh.models import Range1d, Div
-from bokeh.layouts import grid
+from bokeh.models import Range1d, Div, TextInput, Button
+from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
 
 def load_and_process_data(file_path):
@@ -109,30 +109,48 @@ def create_stats_div(data):
     return stats_div
 
 def main(text_file):
+    curdoc().clear()
+    file_select_layout = row(text_input, submit_button)
+
     # Load and process data
     data = load_and_process_data(text_file)
 
-    # Create plots
-    displacement_graph = create_displacement_plot(data, text_file)
-    comp_graph = create_compression_plot(data, text_file)
-    reb_graph = create_rebound_plot(data, text_file)
+    if data is not None:
+        # Create plots
+        displacement_graph = create_displacement_plot(data, text_file)
+        comp_graph = create_compression_plot(data, text_file)
+        reb_graph = create_rebound_plot(data, text_file)
 
-    # Create stats div
-    stats_div = create_stats_div(data)
+        # Create stats div
+        stats_div = create_stats_div(data)
 
-    # Configure graphs
-    for graph in [displacement_graph, comp_graph, reb_graph]:
-        graph.toolbar.logo = None
-        graph.legend.click_policy = "hide"
+        # Configure graphs
+        for graph in [displacement_graph, comp_graph, reb_graph]:
+            graph.toolbar.logo = None
+            graph.legend.click_policy = "hide"
 
-    # Create dashboard layout
-    dashboard_layout = grid(
-        [[displacement_graph], [comp_graph, reb_graph], [stats_div]],
-        sizing_mode="stretch_both"
-    )
+        # Create dashboard layout
+        dashboard_layout = grid(
+            [[displacement_graph], [comp_graph, reb_graph], [stats_div]],
+            sizing_mode="stretch_both"
+        )
+
+
+        layout = column(file_select_layout, dashboard_layout, sizing_mode="stretch_both")
+    else:
+        layout = column(file_select_layout, sizing_mode="stretch_both")
+
 
     # Set theme and display
     curdoc().theme = "dark_minimal"
-    curdoc().add_root(dashboard_layout)
+    curdoc().add_root(layout)
 
-main("TestRun1.TXT")
+def submit_button_click():
+    main(text_input.value)
+
+text_input = TextInput(title="Enter File name: ", placeholder="TestRun1.TXT")
+submit_button = Button(label="Load File", button_type="success")
+submit_button.on_click(submit_button_click)
+
+
+main("TestRun2.TXT")

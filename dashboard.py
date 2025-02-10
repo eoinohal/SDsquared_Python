@@ -138,6 +138,7 @@ def main(text_file):
 
         layout = column(file_select_layout, dashboard_layout, sizing_mode="stretch_both")
     else:
+
         layout = column(file_select_layout, sizing_mode="stretch_both")
 
 

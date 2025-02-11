@@ -1,4 +1,4 @@
-from dashboard import load_and_process_data, create_stats_div
+from dashboard import load_and_process_data
 
 
 def print_data():

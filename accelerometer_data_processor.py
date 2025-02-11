@@ -179,4 +179,4 @@ def main(file_name):
 
 
 if __name__ == "__main__":
-    main("testrun1.txt")
+    main("run_data/testrun1.txt")

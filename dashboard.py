@@ -1,8 +1,9 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
-from bokeh.models import Range1d, Div, TextInput, Button
+from bokeh.models import Range1d, Div, TextInput, Button, Dropdown, Paragraph
 from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
+import os
 
 def load_and_process_data(file_path):
     # Load and process accelerometer data from a file.
@@ -110,7 +111,7 @@ def create_stats_div(data):
 
 def main(text_file):
     curdoc().clear()
-    file_select_layout = row(text_input, submit_button)
+    file_select_layout = row(file_select_text, dropdown)
 
     # Load and process data
     data = load_and_process_data(text_file)
@@ -146,12 +147,19 @@ def main(text_file):
     curdoc().theme = "dark_minimal"
     curdoc().add_root(layout)
 
-def submit_button_click():
-    main(text_input.value.lower())
 
-text_input = TextInput(title="Enter File name: ", placeholder="testrun1.txt")
-submit_button = Button(label="Load File", button_type="success")
-submit_button.on_click(submit_button_click)
+folder_path = "run_data"
+if os.path.exists(folder_path):  # Check if folder exists
+    txt_files = [(file, file) for file in os.listdir(folder_path) if file.endswith(".txt")]
+else:
+    txt_files = []
 
+dropdown = Dropdown(label="Select a file", menu=txt_files)
 
-main("testrun2.txt")
+def file_selected(event):
+    main(folder_path+"/"+event.item)
+
+dropdown.on_event("menu_item_click", file_selected)
+file_select_text = Paragraph(text="Select file here: ")
+
+main("run_data/testrun2.txt")

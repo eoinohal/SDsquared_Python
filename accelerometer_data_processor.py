@@ -59,6 +59,7 @@ def turning_points(array, acceptance):
 def process_accelerometer_file(file):
     # Main function to process file into dict of key values
     FORK_TRAVEL = 170; SHOCK_TRAVEL = 160; BIT_RANGE = 1024
+
     if not os.path.exists(file):
         print(f"File '{file}' not found")
         return None
@@ -178,4 +179,4 @@ def main(file_name):
 
 
 if __name__ == "__main__":
-    main("TestRun1.TXT")
+    main("testrun1.txt")

@@ -147,11 +147,11 @@ def main(text_file):
     curdoc().add_root(layout)
 
 def submit_button_click():
-    main(text_input.value)
+    main(text_input.value.lower())
 
-text_input = TextInput(title="Enter File name: ", placeholder="TestRun1.TXT")
+text_input = TextInput(title="Enter File name: ", placeholder="testrun1.txt")
 submit_button = Button(label="Load File", button_type="success")
 submit_button.on_click(submit_button_click)
 
 
-main("TestRun2.TXT")
+main("testrun2.txt")

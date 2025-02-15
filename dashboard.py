@@ -5,6 +5,9 @@ from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
 import os
 
+current_file = "run_data/testrun2.txt"
+
+
 def load_and_process_data(file_path):
     # Load and process accelerometer data from a file.
     data = process_accelerometer_file(file_path)
@@ -110,8 +113,10 @@ def create_stats_div(data):
     return stats_div
 
 def main(text_file):
+    global current_file
+    current_file = text_file
     curdoc().clear()
-    file_select_layout = row(file_select_text, dropdown)
+    top_select_layout = row(file_select_text, dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
 
     # Load and process data
     data = load_and_process_data(text_file)
@@ -137,10 +142,10 @@ def main(text_file):
         )
 
 
-        layout = column(file_select_layout, dashboard_layout, sizing_mode="stretch_both")
+        layout = column(top_select_layout, dashboard_layout, sizing_mode="stretch_both")
     else:
 
-        layout = column(file_select_layout, sizing_mode="stretch_both")
+        layout = column(top_select_layout, sizing_mode="stretch_both")
 
 
     # Set theme and display
@@ -159,7 +164,18 @@ dropdown = Dropdown(label="Select a file", menu=txt_files)
 def file_selected(event):
     main(folder_path+"/"+event.item)
 
+def on_suspension_change(attr, old, new):
+    main(current_file)
+
 dropdown.on_event("menu_item_click", file_selected)
 file_select_text = Paragraph(text="Select file here: ")
 
-main("run_data/testrun2.txt")
+shock_length_select_text = Paragraph(text="Select shock length: ")
+fork_length_select_text = Paragraph(text="Select fork length: ")
+shock_length_select = TextInput(value="160")
+fork_length_select = TextInput(value="160")
+shock_length_select.on_change("value", on_suspension_change)
+fork_length_select.on_change("value", on_suspension_change)
+
+
+main(current_file)

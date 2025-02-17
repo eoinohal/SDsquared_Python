@@ -150,6 +150,7 @@ def main(text_file):
 
     # Set theme and display
     curdoc().theme = "dark_minimal"
+    curdoc().clear()
     curdoc().add_root(layout)
 
 

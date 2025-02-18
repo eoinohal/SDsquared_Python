@@ -1,8 +1,9 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
-from bokeh.models import Range1d, Div, TextInput, Button, Dropdown, Paragraph
+from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph
 from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
+import base64
 import os
 
 current_file = "run_data/testrun2.txt"
@@ -116,8 +117,7 @@ def main(text_file):
     global current_file
     current_file = text_file
     curdoc().clear()
-    top_select_layout = row(file_select_text, dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
-
+    top_select_layout = row(file_select_text, dropdown, file_input, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
     # Load and process data
     data = load_and_process_data(text_file)
 
@@ -167,6 +167,26 @@ def file_selected(event):
 
 def on_suspension_change(attr, old, new):
     main(current_file)
+
+def upload_callback(attr, old, new):
+    global current_file
+
+    # Decode the uploaded file content
+    decoded = base64.b64decode(new)
+    file_content = decoded.decode("utf-8")
+
+    # Save the file temporarily
+    temp_file_path = "run_data/uploaded_file.txt"
+    with open(temp_file_path, "w", newline="") as f:
+        f.write(file_content)
+
+    # Update the current file and refresh the dashboard
+    current_file = temp_file_path
+    main(current_file)
+
+
+file_input = FileInput(accept=".txt")
+file_input.on_change("value", upload_callback)
 
 dropdown.on_event("menu_item_click", file_selected)
 file_select_text = Paragraph(text="Select file here: ")

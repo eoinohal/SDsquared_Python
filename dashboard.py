@@ -5,6 +5,7 @@ from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
 import base64
 import os
+import numpy as np
 
 current_file = "run_data/testrun2.txt"
 
@@ -76,6 +77,11 @@ def create_compression_plot(data, file_name):
     comp_graph.scatter(shock_compression_speed, shock_compression_displacement, color="orange", size=4, legend_label="Shock Compression", marker="circle")
     comp_graph.line(x=shock_compression_regress, y=shock_compression_displacement, color="red", legend_label="Shock Regression", line_width=2)
 
+    mean_x = [(min(fork_compression_regress)+min(shock_compression_regress))/2,(max(fork_compression_regress)+max(shock_compression_regress))/2]
+    mean_y = [(min(fork_compression_displacement)+min(shock_compression_displacement))/2,(max(fork_compression_displacement)+max(shock_compression_displacement))/2]
+
+    comp_graph.line(x=mean_x, y=mean_y, color="white", legend_label="Mean Rebound Regression", line_width=2)
+
     return comp_graph
 
 def create_rebound_plot(data, file_name):
@@ -104,7 +110,13 @@ def create_rebound_plot(data, file_name):
     reb_graph.scatter(shock_rebound_speed, shock_rebound_displacement, color="orange", size=4, legend_label="Shock Rebound", marker="circle")
     reb_graph.line(x=shock_rebound_regress, y=shock_rebound_displacement, color="red", legend_label="Shock Regression", line_width=2)
 
+    mean_x = [(min(fork_rebound_regress)+min(shock_rebound_regress))/2,(max(fork_rebound_regress)+max(shock_rebound_regress))/2]
+    mean_y = [(min(fork_rebound_displacement)+min(shock_rebound_displacement))/2,(max(fork_rebound_displacement)+max(shock_rebound_displacement))/2]
+
+    reb_graph.line(x=mean_x, y=mean_y, color="white", legend_label="Mean Rebound Regression", line_width=2)
+
     return reb_graph
+
 
 def create_stats_div(data):
     # Create a Div element to display statistics.

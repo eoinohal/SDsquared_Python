@@ -80,7 +80,7 @@ def create_compression_plot(data, file_name):
     mean_x = [(min(fork_compression_regress)+min(shock_compression_regress))/2,(max(fork_compression_regress)+max(shock_compression_regress))/2]
     mean_y = [(min(fork_compression_displacement)+min(shock_compression_displacement))/2,(max(fork_compression_displacement)+max(shock_compression_displacement))/2]
 
-    comp_graph.line(x=mean_x, y=mean_y, color="white", legend_label="Mean Rebound Regression", line_width=2)
+    comp_graph.line(x=mean_x, y=mean_y, color="white", legend_label="Mean Compression Regression", line_width=2)
 
     return comp_graph
 

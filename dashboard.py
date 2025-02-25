@@ -1,6 +1,6 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
-from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph
+from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph, Button
 from bokeh.layouts import grid, row, column
 from accelerometer_data_processor import process_accelerometer_file
 import base64
@@ -117,7 +117,6 @@ def create_rebound_plot(data, file_name):
 
     return reb_graph
 
-
 def create_stats_div(data):
     # Create a Div element to display statistics.
     text_data = data["textData"]
@@ -129,7 +128,7 @@ def main(text_file):
     global current_file
     current_file = text_file
     curdoc().clear()
-    top_select_layout = row(file_select_text, dropdown, file_input, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
+    top_select_layout = row(file_select_text,file_input, dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
     # Load and process data
     data = load_and_process_data(text_file)
 

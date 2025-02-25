@@ -1,7 +1,6 @@
 import os.path
 
 
-
 def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
     # Uses gradient between turning points to find time, total displacement and speed of compression/rebound
     # compression = (peaks, troughs) and rebound = (troughs, peaks)
@@ -12,14 +11,14 @@ def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
         if value > arr1_times[0]:
             startIndex = i
             break
-            
-    itterations = min(len(arr1), len(arr2)-startIndex)
+
+    itterations = min(len(arr1), len(arr2) - startIndex)
 
     for i in range(itterations):
         val1 = arr1[i]
         time1 = arr1_times[i]
-        val2 = arr2[i+startIndex]
-        time2 = arr2_times[i+startIndex]
+        val2 = arr2[i + startIndex]
+        time2 = arr2_times[i + startIndex]
         displacement = abs(val2 - val1)
         if displacement > 1:  # Filter out small displacements (vibrations)
             times.append(time1)
@@ -27,6 +26,7 @@ def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
             displacements.append(displacement)
 
     return times, speeds, displacements
+
 
 def turning_points(array, acceptance):
     # Returns all indexes of turning points in 1D array. Acceptance is the minimum change for turning point to be not considered vibration
@@ -60,12 +60,13 @@ def turning_points(array, acceptance):
 def process_accelerometer_file(file):
     from dashboard import fork_length_select, shock_length_select
     # Main function to process file into dict of key values
-    FORK_TRAVEL = float(fork_length_select.value); SHOCK_TRAVEL = float(shock_length_select.value); BIT_RANGE = 1024
+    FORK_TRAVEL = float(fork_length_select.value);
+    SHOCK_TRAVEL = float(shock_length_select.value);
+    BIT_RANGE = 1024
 
     if not os.path.exists(file):
         print(f"File '{file}' not found")
         return None
-
 
     with open(file, "r") as f:
         lineCount = len(f.readlines()) - 4  # Discount header and footer
@@ -79,7 +80,8 @@ def process_accelerometer_file(file):
         for accelerometerInstance in f:
             accelerometerList = accelerometerInstance.split(",")
             if len(accelerometerList) != 1:
-                yShockValues.append(((float(accelerometerList[6]) - initialShockDisplacement) / BIT_RANGE) * SHOCK_TRAVEL)
+                yShockValues.append(
+                    ((float(accelerometerList[6]) - initialShockDisplacement) / BIT_RANGE) * SHOCK_TRAVEL)
                 yForkValues.append(((float(accelerometerList[7]) - initialForkDisplacement) / BIT_RANGE) * FORK_TRAVEL)
             elif accelerometerInstance != 'Run finished\n':
                 timeOfRun = int(accelerometerInstance) / 1000
@@ -133,7 +135,8 @@ def get_line_data(x, y):
     rebound = get_compression_and_rebound(peaks, troughs, peakTimes, troughTimes)
 
     # Data for text, peaks and troughs, compression, rebound
-    return [max(y), min(y), sum(y) / len(y), compression[0], rebound[0]], [peakTimes, peaks, troughTimes, troughs], compression[1], rebound[1]
+    return [max(y), min(y), sum(y) / len(y), compression[0], rebound[0]], [peakTimes, peaks, troughTimes, troughs], \
+    compression[1], rebound[1]
 
 
 def get_compression_and_rebound(a, b, c, d):

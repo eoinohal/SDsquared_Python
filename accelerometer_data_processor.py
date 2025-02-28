@@ -58,7 +58,6 @@ def turning_points(array, acceptance):
 
 
 def process_accelerometer_file(file, shock_length, fork_length):
-    from dashboard import fork_length_select, shock_length_select
     # Main function to process file into dict of key values
     FORK_TRAVEL = float(fork_length);
     SHOCK_TRAVEL = float(shock_length);
@@ -80,9 +79,18 @@ def process_accelerometer_file(file, shock_length, fork_length):
         for accelerometerInstance in f:
             accelerometerList = accelerometerInstance.split(",")
             if len(accelerometerList) != 1:
+                shock_value = float(accelerometerList[6])
+                fork_value = float(accelerometerList[7])
+                if shock_value >= 1024:
+                    shock_value = 0
+                if fork_value >= 1024:
+                    fork_value = 0
                 yShockValues.append(
-                    ((float(accelerometerList[6]) - initialShockDisplacement) / BIT_RANGE) * SHOCK_TRAVEL)
-                yForkValues.append(((float(accelerometerList[7]) - initialForkDisplacement) / BIT_RANGE) * FORK_TRAVEL)
+                    ((shock_value - initialShockDisplacement) / BIT_RANGE) * SHOCK_TRAVEL
+                )
+                yForkValues.append(
+                    ((fork_value - initialForkDisplacement) / BIT_RANGE) * FORK_TRAVEL
+                )
             elif accelerometerInstance != 'Run finished\n':
                 timeOfRun = int(accelerometerInstance) / 1000
 

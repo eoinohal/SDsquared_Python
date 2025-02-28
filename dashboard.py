@@ -10,9 +10,9 @@ import numpy as np
 current_file = "run_data/testrun2.txt"
 
 
-def load_and_process_data(file_path):
+def load_and_process_data(file_path, shock_length, fork_length):
     # Load and process accelerometer data from a file.
-    data = process_accelerometer_file(file_path)
+    data = process_accelerometer_file(file_path, shock_length, fork_length)
     return data
 
 def create_displacement_plot(data, file_name):
@@ -130,7 +130,7 @@ def main(text_file):
     curdoc().clear()
     top_select_layout = row(file_select_text,file_input, dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
     # Load and process data
-    data = load_and_process_data(text_file)
+    data = load_and_process_data(text_file, shock_length_select.value, fork_length_select.value)
 
     if data is not None:
         # Create plots
@@ -210,4 +210,4 @@ shock_length_select.on_change("value", on_suspension_change)
 fork_length_select.on_change("value", on_suspension_change)
 
 
-main(current_file)
+main(current_file,)

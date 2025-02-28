@@ -57,11 +57,11 @@ def turning_points(array, acceptance):
     return idx_min, idx_max
 
 
-def process_accelerometer_file(file):
+def process_accelerometer_file(file, shock_length, fork_length):
     from dashboard import fork_length_select, shock_length_select
     # Main function to process file into dict of key values
-    FORK_TRAVEL = float(fork_length_select.value);
-    SHOCK_TRAVEL = float(shock_length_select.value);
+    FORK_TRAVEL = float(fork_length);
+    SHOCK_TRAVEL = float(shock_length);
     BIT_RANGE = 1024
 
     if not os.path.exists(file):

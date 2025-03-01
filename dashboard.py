@@ -167,7 +167,7 @@ def main(text_file):
 
 folder_path = "run_data"
 if os.path.exists(folder_path):  # Check if folder exists
-    txt_files = [(file, file) for file in os.listdir(folder_path) if file.endswith(".txt")]
+    txt_files = [(file, file) for file in os.listdir(folder_path) if file.lower().endswith(".txt")]
 else:
     txt_files = []
 

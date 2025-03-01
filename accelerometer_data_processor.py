@@ -101,33 +101,36 @@ def process_accelerometer_file(file, shock_length, fork_length):
     textData = format_data(shock[0], fork[0])
 
     return {
-        # Dict of key values
-        "textData": textData,
-        "timeOfRun": timeOfRun,
-        "xValues": xValues,
-        "yForkValues": yForkValues,
-        "yShockValues": yShockValues,
-        "forkPeakTimes": fork[1][0],
-        "forkPeaks": fork[1][1],
-        "forkTroughTimes": fork[1][2],
-        "forkTroughs": fork[1][3],
-        "forkCompressionSpeed": fork[2][0],
-        "forkCompressionDisplacement": fork[2][1],
-        "forkCompression_regress": fork[2][2],
-        "forkReboundSpeed": fork[3][0],
-        "forkReboundDisplacement": fork[3][1],
-        "forkRebound_regress": fork[3][2],
-        "shockPeakTimes": shock[1][0],
-        "shockPeaks": shock[1][1],
-        "shockTroughTimes": shock[1][2],
-        "shockTroughs": shock[1][3],
-        "shockCompressionSpeed": shock[2][0],
-        "shockCompressionDisplacement": shock[2][1],
-        "shockCompression_regress": shock[2][2],
-        "shockReboundSpeed": shock[3][0],
-        "shockReboundDisplacement": shock[3][1],
-        "shockRebound_regress": shock[3][2],
+        "textData": ensure_non_empty(textData),
+        "timeOfRun": ensure_non_empty(timeOfRun),
+        "xValues": ensure_non_empty(xValues),
+        "yForkValues": ensure_non_empty(yForkValues),
+        "yShockValues": ensure_non_empty(yShockValues),
+        "forkPeakTimes": ensure_non_empty(fork[1][0]),
+        "forkPeaks": ensure_non_empty(fork[1][1]),
+        "forkTroughTimes": ensure_non_empty(fork[1][2]),
+        "forkTroughs": ensure_non_empty(fork[1][3]),
+        "forkCompressionSpeed": ensure_non_empty(fork[2][0]),
+        "forkCompressionDisplacement": ensure_non_empty(fork[2][1]),
+        "forkCompression_regress": ensure_non_empty(fork[2][2]),
+        "forkReboundSpeed": ensure_non_empty(fork[3][0]),
+        "forkReboundDisplacement": ensure_non_empty(fork[3][1]),
+        "forkRebound_regress": ensure_non_empty(fork[3][2]),
+        "shockPeakTimes": ensure_non_empty(shock[1][0]),
+        "shockPeaks": ensure_non_empty(shock[1][1]),
+        "shockTroughTimes": ensure_non_empty(shock[1][2]),
+        "shockTroughs": ensure_non_empty(shock[1][3]),
+        "shockCompressionSpeed": ensure_non_empty(shock[2][0]),
+        "shockCompressionDisplacement": ensure_non_empty(shock[2][1]),
+        "shockCompression_regress": ensure_non_empty(shock[2][2]),
+        "shockReboundSpeed": ensure_non_empty(shock[3][0]),
+        "shockReboundDisplacement": ensure_non_empty(shock[3][1]),
+        "shockRebound_regress": ensure_non_empty(shock[3][2]),
     }
+
+def ensure_non_empty(value):
+    """Returns value if it's non-empty; otherwise, returns [0]."""
+    return value if value else [0]
 
 
 def get_line_data(x, y):
@@ -167,8 +170,22 @@ def linear_regression(x, y):
     sum_xy = sum(xi * yi for xi, yi in zip(x, y))
     sum_xx = sum(xi * xi for xi in x)
 
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
-    intercept = (sum_y - slope * sum_x) / n
+    try:
+        denominator = (n * sum_xx - sum_x * sum_x)
+        if denominator == 0:
+            raise ZeroDivisionError("Denominator for slope calculation is zero. Check input values.")
+
+        slope = (n * sum_xy - sum_x * sum_y) / denominator
+        intercept = (sum_y - slope * sum_x) / n if n != 0 else float('nan')  # Avoid division by zero
+
+    except ZeroDivisionError as e:
+        print(f"Error: {e}")
+        slope = float('nan')  # Assign NaN or a default value
+        intercept = float('nan')
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        slope = float('nan')
+        intercept = float('nan')
 
     return slope, intercept
 

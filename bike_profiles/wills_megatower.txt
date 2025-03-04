@@ -1,0 +1,5 @@
+rear_sus_min : 606
+rear_sus_max : 1000
+front_sus_min : 0
+front_sus_max : 1024
+Comments : Size large

@@ -128,7 +128,7 @@ def main(text_file):
     global current_file
     current_file = text_file
     curdoc().clear()
-    top_select_layout = row(file_select_text,file_input, dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
+    top_select_layout = row(file_select_text,file_input, file_dropdown, bike_select_text, bike_dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
     # Load and process data
     data = load_and_process_data(text_file, shock_length_select.value, fork_length_select.value)
 
@@ -165,16 +165,28 @@ def main(text_file):
     curdoc().add_root(layout)
 
 
-folder_path = "run_data"
-if os.path.exists(folder_path):  # Check if folder exists
-    txt_files = [(file, file) for file in os.listdir(folder_path) if file.lower().endswith(".txt")]
+run_folder_path = "run_data"
+if os.path.exists(run_folder_path):  # Check if folder exists
+    run_txt_files = [(file, file) for file in os.listdir(run_folder_path) if file.lower().endswith(".txt")]
 else:
-    txt_files = []
+    run_txt_files = []
 
-dropdown = Dropdown(label="Select a file", menu=txt_files)
+file_dropdown = Dropdown(label="Select a file", menu=run_txt_files)
+
+bike_folder_path = "bike_profiles"
+if os.path.exists(bike_folder_path):  # Check if folder exists
+    bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
+else:
+    bike_txt_files = []
+
+bike_dropdown = Dropdown(label="Select a file", menu=bike_txt_files)
+
 
 def file_selected(event):
-    main(folder_path+"/"+event.item)
+    main(run_folder_path+"/"+event.item)
+
+def bike_selected(event):
+    main(run_folder_path+"/"+event.item)
 
 def on_suspension_change(attr, old, new):
     main(current_file)
@@ -199,8 +211,11 @@ def upload_callback(attr, old, new):
 file_input = FileInput(accept=".txt")
 file_input.on_change("value", upload_callback)
 
-dropdown.on_event("menu_item_click", file_selected)
+file_dropdown.on_event("menu_item_click", file_selected)
 file_select_text = Paragraph(text="Select file here: ")
+
+bike_dropdown.on_event("menu_item_click", bike_selected)
+bike_select_text = Paragraph(text="Select bike here: ")
 
 shock_length_select_text = Paragraph(text="Select shock length: ")
 fork_length_select_text = Paragraph(text="Select fork length: ")

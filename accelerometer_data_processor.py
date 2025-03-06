@@ -1,6 +1,5 @@
 import os.path
 
-
 def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):
     # Uses gradient between turning points to find time, total displacement and speed of compression/rebound
     # compression = (peaks, troughs) and rebound = (troughs, peaks)
@@ -57,11 +56,12 @@ def turning_points(array, acceptance):
     return idx_min, idx_max
 
 
-def process_accelerometer_file(file, shock_length, fork_length):
+def process_accelerometer_file(file, bike_data):
     # Main function to process file into dict of key values
-    FORK_TRAVEL = float(fork_length);
-    SHOCK_TRAVEL = float(shock_length);
-    BIT_RANGE = 1024
+    shock_min_value = bike_data[0]
+    shock_max_value = bike_data[1]
+    fork_min_value = bike_data[2]
+    fork_max_value = bike_data[3]
 
     if not os.path.exists(file):
         print(f"File '{file}' not found")
@@ -74,8 +74,6 @@ def process_accelerometer_file(file, shock_length, fork_length):
         yShockValues, yForkValues = [], []
         f.readline()  # Skip header
         initialValues = f.readline().split(',')
-        initialShockDisplacement = float(initialValues[0])
-        initialForkDisplacement = float(initialValues[1])
         for accelerometerInstance in f:
             accelerometerList = accelerometerInstance.split(",")
             if len(accelerometerList) != 1:
@@ -86,14 +84,15 @@ def process_accelerometer_file(file, shock_length, fork_length):
                 if fork_value >= 1024:
                     fork_value = 0
                 yShockValues.append(
-                    ((shock_value - initialShockDisplacement) / BIT_RANGE) * SHOCK_TRAVEL
+                    ((shock_value - shock_min_value) / (shock_max_value - shock_min_value)) * 100
                 )
                 yForkValues.append(
-                    ((fork_value - initialForkDisplacement) / BIT_RANGE) * FORK_TRAVEL
+                    ((fork_value - fork_min_value) / (fork_max_value - fork_min_value)) * 100
                 )
             elif accelerometerInstance != 'Run finished\n':
                 timeOfRun = int(accelerometerInstance) / 1000
-
+    print(f"minimum shock value = {min(yShockValues)}")
+    print(f"maximum shock value = {max(yShockValues)}")
     # Generate xValues without numpy
     xValues = [i * (timeOfRun / lineCount) for i in range(lineCount)]
     shock = get_line_data(xValues, yShockValues)

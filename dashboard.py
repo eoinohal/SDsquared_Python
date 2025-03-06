@@ -7,15 +7,29 @@ import base64
 import os
 import numpy as np
 
-current_file = "run_data/testrun2.txt"
+current_data_file = "run_data/testrun2.txt"
+current_bike_file = "bike_profiles/wills_megatower.txt"
 
 
-def load_and_process_data(file_path, shock_length, fork_length):
+def load_and_process_data(file_path, bike_data):
     # Load and process accelerometer data from a file.
-    data = process_accelerometer_file(file_path, shock_length, fork_length)
+    data = process_accelerometer_file(file_path, bike_data)
     return data
 
-def create_displacement_plot(data, file_name):
+def process_bike_data(file_path):
+    values = []
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split(":")  # Split by ':'
+            if len(parts) == 2:  # Ensure there are two parts (key and value)
+                key, value = parts[0].strip(), parts[1].strip()
+                if key in ["rear_sus_min", "rear_sus_max", "front_sus_min", "front_sus_max"]:
+                    values.append(int(value))  # Convert to integer and store
+
+    return values
+
+def create_displacement_plot(data, file_name, bike_file):
     # Create a displacement plot using the processed data.
     time_of_run = data["timeOfRun"]
     x_values = data["xValues"]
@@ -31,7 +45,7 @@ def create_displacement_plot(data, file_name):
     shock_troughs = data["shockTroughs"]
 
     displacement_graph = figure(
-        title=f"Percentage Displacement Plot: {file_name}",
+        title=f"Percentage Displacement Plot: {file_name}, {bike_file}",
         sizing_mode="stretch_width",
         height=450,
         x_axis_label="Time (s)",
@@ -124,19 +138,20 @@ def create_stats_div(data):
     stats_div = Div(text=html_content)
     return stats_div
 
-def main(text_file):
-    global current_file
-    current_file = text_file
+def main(run_data_file, bike_file):
+    global current_data_file
+    current_data_file = run_data_file
     curdoc().clear()
-    top_select_layout = row(file_select_text,file_input, file_dropdown, bike_select_text, bike_dropdown, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
+    top_select_layout = row(file_select_text,file_input, file_dropdown, bike_select_text, bike_dropdown)
     # Load and process data
-    data = load_and_process_data(text_file, shock_length_select.value, fork_length_select.value)
+    bike_data = process_bike_data(bike_file)
+    data = load_and_process_data(run_data_file, bike_data)
 
     if data is not None:
         # Create plots
-        displacement_graph = create_displacement_plot(data, text_file)
-        comp_graph = create_compression_plot(data, text_file)
-        reb_graph = create_rebound_plot(data, text_file)
+        displacement_graph = create_displacement_plot(data, run_data_file, bike_file)
+        comp_graph = create_compression_plot(data, run_data_file)
+        reb_graph = create_rebound_plot(data, run_data_file)
 
         # Create stats div
         stats_div = create_stats_div(data)
@@ -183,16 +198,16 @@ bike_dropdown = Dropdown(label="Select a file", menu=bike_txt_files)
 
 
 def file_selected(event):
-    main(run_folder_path+"/"+event.item)
+    main(run_folder_path+"/"+event.item, current_bike_file)
 
 def bike_selected(event):
-    main(run_folder_path+"/"+event.item)
+    main(current_data_file, bike_folder_path+"/"+event.item)
 
 def on_suspension_change(attr, old, new):
-    main(current_file)
+    main(current_data_file)
 
 def upload_callback(attr, old, new):
-    global current_file
+    global current_data_file
 
     # Decode the uploaded file content
     decoded = base64.b64decode(new)
@@ -204,8 +219,8 @@ def upload_callback(attr, old, new):
         f.write(file_content)
 
     # Update the current file and refresh the dashboard
-    current_file = temp_file_path
-    main(current_file)
+    current_data_file = temp_file_path
+    main(current_data_file)
 
 
 file_input = FileInput(accept=".txt")
@@ -217,12 +232,4 @@ file_select_text = Paragraph(text="Select file here: ")
 bike_dropdown.on_event("menu_item_click", bike_selected)
 bike_select_text = Paragraph(text="Select bike here: ")
 
-shock_length_select_text = Paragraph(text="Select shock length: ")
-fork_length_select_text = Paragraph(text="Select fork length: ")
-shock_length_select = TextInput(value="160")
-fork_length_select = TextInput(value="160")
-shock_length_select.on_change("value", on_suspension_change)
-fork_length_select.on_change("value", on_suspension_change)
-
-
-main(current_file,)
+main(current_data_file, current_bike_file)

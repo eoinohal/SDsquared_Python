@@ -1,5 +1,5 @@
-rear_sus_min : 488
+rear_sus_min : 0
 rear_sus_max : 1024
 front_sus_min : 0
 front_sus_max : 1024
-Comments : Size large
+Comments : For testing purposes

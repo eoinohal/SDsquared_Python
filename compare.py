@@ -1,3 +1,6 @@
+# compare.py
+# Compare fork and shock values from 2 runs in accelerometer reading graph and compression/rebound scatter plots
+
 from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph
@@ -16,7 +19,7 @@ def load_and_process_data(file_path, shock_length, fork_length):
     data = process_accelerometer_file(file_path, shock_length, fork_length)
     return data
 
-# Displacement plot
+# Displacement plot - Uses accelerometer readings to make displacement graph
 def decomposed_displacement_plot(vals):
     # Plot 2 accelerometer recordings on a graph
     displacement_graph = figure(
@@ -93,7 +96,7 @@ def shock_displacement_values(data1, data2, file1_name, file2_name):
     }
     return shock_values
 
-# Regression plot
+# Regression plot - Uses values to make scatter plot with regression lines
 def decomposed_regression_plot(vals):
     # Scatter plot of compression/rebound values with regression lines
     graph = figure(
@@ -229,7 +232,7 @@ def main(text_file1, text_file2):
         # Create dashboard layout
         dashboard_layout = column(
             head,
-            top_select_layout,  # File selection widgets now appear below the header
+            top_select_layout,
             fork_subheading,
             displacement_subsubheading1,
             fork_displacement_graph,

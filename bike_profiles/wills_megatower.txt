@@ -1,4 +1,4 @@
-rear_sus_min : 488
+rear_sus_min : 561
 rear_sus_max : 1024
 front_sus_min : 0
 front_sus_max : 1024

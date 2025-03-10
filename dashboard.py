@@ -220,7 +220,7 @@ def upload_callback(attr, old, new):
 
     # Update the current file and refresh the dashboard
     current_data_file = temp_file_path
-    main(current_data_file)
+    main(current_data_file, current_bike_file)
 
 
 file_input = FileInput(accept=".txt")

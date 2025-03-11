@@ -108,14 +108,14 @@ def decomposed_regression_plot(vals):
         tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
     )
 
-    speed1 = vals["speed1"]
+    speed1 = vals["speed1"]; speedR1 = sorted(speed1)[int(len(speed1)*0.9)]
     displacement1 = vals["displacement1"]
     regress1 = vals["regress1"]
-    speed2 = vals["speed2"]
+    speed2 = vals["speed2"]; speedR2 = sorted(speed2)[int(len(speed1)*0.9)]
     displacement2 = vals["displacement2"]
     regress2 = vals["regress2"]
 
-    graph.x_range = Range1d(start=0, end=max(max(speed1), max(speed2)) * 1.1)
+    graph.x_range = Range1d(start=0, end=max(speedR1, speedR2) * 1.1)
     graph.y_range = Range1d(start=0, end=max(max(displacement1), max(displacement2)) * 1.1)
 
     graph.scatter(speed1, displacement1, color="blue", size=4, legend_label=vals["name1"], marker="circle")

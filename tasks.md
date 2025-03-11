@@ -1,13 +1,10 @@
 **Task Sheet** 
 
-**w/c 04.03.25**  
+**w/c 11.03.25**  
 _Will E_
-- Loading bike profiles
 - Comments within the run files
-- Make embedded code git
-- Convert the arduino code for the raspberry Pi
+- Get Pi 0w2 to run some sensible code and output regression values  
 
 _Eoin_ 
-- Compare Graphs
 - Launch as an application
-- Choose between analayse and compare
+- Choose between analyse and compare

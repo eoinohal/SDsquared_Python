@@ -73,6 +73,9 @@ def create_compression_plot(data, file_name):
     shock_compression_speed = data["shockCompressionSpeed"]
     shock_compression_displacement = data["shockCompressionDisplacement"]
     shock_compression_regress = data["shockCompression_regress"]
+    speedFR = sorted(fork_compression_speed)[int(len(fork_compression_speed)*0.9)]
+    speedSR = sorted(shock_compression_speed)[int(len(shock_compression_speed)*0.9)]
+    rangeSpeed = max(speedFR, speedSR)
 
     comp_graph = figure(
         title=f"Compression Scatter Plot: {file_name}",
@@ -82,7 +85,8 @@ def create_compression_plot(data, file_name):
         y_axis_label="Absolute change in displacement (%)",
         tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
     )
-    comp_graph.x_range = Range1d(start=0, end=max(max(fork_compression_speed), max(shock_compression_speed)) * 1.1)
+
+    comp_graph.x_range = Range1d(start=0, end=rangeSpeed * 1.1)
     comp_graph.y_range = Range1d(start=0, end=max(max(fork_compression_displacement), max(shock_compression_displacement)) * 1.1)
 
     comp_graph.scatter(fork_compression_speed, fork_compression_displacement, color="blue", size=4, legend_label="Fork Compression", marker="circle")
@@ -106,6 +110,10 @@ def create_rebound_plot(data, file_name):
     shock_rebound_speed = data["shockReboundSpeed"]
     shock_rebound_displacement = data["shockReboundDisplacement"]
     shock_rebound_regress = data["shockRebound_regress"]
+    speedFR = sorted(fork_rebound_speed)[int(len(fork_rebound_speed)*0.9)]
+    speedSR = sorted(shock_rebound_speed)[int(len(shock_rebound_speed)*0.9)]
+    rangeSpeed = max(speedFR, speedSR)
+
 
     reb_graph = figure(
         title=f"Rebound Scatter Plot: {file_name}",
@@ -115,7 +123,7 @@ def create_rebound_plot(data, file_name):
         y_axis_label="Absolute change in displacement (%)",
         tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
     )
-    reb_graph.x_range = Range1d(start=0, end=max(max(fork_rebound_speed), max(shock_rebound_speed)) * 1.1)
+    reb_graph.x_range = Range1d(start=0, end=rangeSpeed * 1.1)
     reb_graph.y_range = Range1d(start=0, end=max(max(fork_rebound_displacement), max(shock_rebound_displacement)) * 1.1)
 
     reb_graph.scatter(fork_rebound_speed, fork_rebound_displacement, color="blue", size=4, legend_label="Fork Rebound", marker="circle")

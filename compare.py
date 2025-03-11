@@ -237,12 +237,12 @@ def main(text_file1, text_file2):
             displacement_subsubheading1,
             fork_displacement_graph,
             regression_subsubheading1,
-            row(fork_comp_graph, fork_reb_graph, sizing_mode='stretch_both'),
+            row(fork_comp_graph, fork_reb_graph, sizing_mode='stretch_width'),
             shock_subheading,
             displacement_subsubheading2,
             shock_displacement_graph,
             regression_subsubheading2,
-            row(shock_comp_graph, shock_reb_graph, sizing_mode='stretch_both'),
+            row(shock_comp_graph, shock_reb_graph, sizing_mode='stretch_width'),
             sizing_mode="stretch_both"
         )
 

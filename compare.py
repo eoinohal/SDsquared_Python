@@ -12,11 +12,12 @@ import os
 # Default files
 current_file1 = "run_data/testrun1.txt"
 current_file2 = "run_data/testrun2.txt"
+current_bike_file = "bike_profiles/wills_megatower.txt"
 
 # Load and process data
-def load_and_process_data(file_path, shock_length, fork_length):
+def load_and_process_data(file_path, bike_data):
     # Load and process accelerometer data from a file
-    data = process_accelerometer_file(file_path, shock_length, fork_length)
+    data = process_accelerometer_file(file_path, bike_data)
     return data
 
 # Displacement plot - Uses accelerometer readings to make displacement graph
@@ -193,15 +194,18 @@ def shock_rebound_values(data1, data2, file1_name, file2_name):
 
 
 # Main function
-def main(text_file1, text_file2):
+def main(text_file1, text_file2, bike_file):
+    from dashboard import process_bike_data
     global current_file1, current_file2
     current_file1 = text_file1
     current_file2 = text_file2
     curdoc().clear()
 
+    bike_data = process_bike_data(bike_file)
+
     # Load and process data for both files
-    data1 = load_and_process_data(text_file1, shock_length_select.value, fork_length_select.value)
-    data2 = load_and_process_data(text_file2, shock_length_select.value, fork_length_select.value)
+    data1 = load_and_process_data(text_file1, bike_data)
+    data2 = load_and_process_data(text_file2, bike_data)
 
     if data1 is not None and data2 is not None:
         # Create fork plots
@@ -262,18 +266,30 @@ if os.path.exists(folder_path):  # Check if folder exists
 else:
     txt_files = []
 
+bike_folder_path = "bike_profiles"
+if os.path.exists(bike_folder_path):  # Check if folder exists
+    bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
+else:
+    bike_txt_files = []
+
+bike_dropdown = Dropdown(label="Select a file", menu=bike_txt_files)
+
+
 dropdown1 = Dropdown(label="Select file 1", menu=txt_files)
 dropdown2 = Dropdown(label="Select file 2", menu=txt_files)
 
 def file1_selected(event):
     global current_file1
     current_file1 = folder_path + "/" + event.item
-    main(current_file1, current_file2)
+    main(current_file1, current_file2, current_bike_file)
 
 def file2_selected(event):
     global current_file2
     current_file2 = folder_path + "/" + event.item
-    main(current_file1, current_file2)
+    main(current_file1, current_file2, current_bike_file)
+
+def bike_selected(event):
+    main(current_file1, current_file2, bike_folder_path+"/"+event.item)
 
 dropdown1.on_event("menu_item_click", file1_selected)
 dropdown2.on_event("menu_item_click", file2_selected)
@@ -287,7 +303,7 @@ def upload_callback1(attr, old, new):
     with open(temp_file_path, "w", newline="") as f:
         f.write(file_content)
     current_file1 = temp_file_path
-    main(current_file1, current_file2)
+    main(current_file1, current_file2, current_bike_file)
 
 def upload_callback2(attr, old, new):
     global current_file2
@@ -297,7 +313,7 @@ def upload_callback2(attr, old, new):
     with open(temp_file_path, "w", newline="") as f:
         f.write(file_content)
     current_file2 = temp_file_path
-    main(current_file1, current_file2)
+    main(current_file1, current_file2, current_bike_file)
 
 file_input1 = FileInput(accept=".txt")
 file_input1.on_change("value", upload_callback1)
@@ -305,23 +321,14 @@ file_input1.on_change("value", upload_callback1)
 file_input2 = FileInput(accept=".txt")
 file_input2.on_change("value", upload_callback2)
 
-# Text inputs for shock and fork length
-shock_length_select_text = Paragraph(text="Select shock length: ")
-fork_length_select_text = Paragraph(text="Select fork length: ")
-shock_length_select = TextInput(value="160")
-fork_length_select = TextInput(value="160")
-
-def on_suspension_change(attr, old, new):
-    main(current_file1, current_file2)
-
-shock_length_select.on_change("value", on_suspension_change)
-fork_length_select.on_change("value", on_suspension_change)
+bike_dropdown.on_event("menu_item_click", bike_selected)
+bike_select_text = Paragraph(text="Select bike here: ")
 
 # Layout
 file1_select_text = Paragraph(text="Select file 1 here: ")
 file2_select_text = Paragraph(text="Select file 2 here: ")
 
-top_select_layout = row(file1_select_text, file_input1, dropdown1, file2_select_text, file_input2, dropdown2, shock_length_select_text, shock_length_select, fork_length_select_text, fork_length_select)
+top_select_layout = row(file1_select_text, file_input1, dropdown1, file2_select_text, file_input2, dropdown2, bike_dropdown)
 
 # Initialize the dashboard
-main(current_file1, current_file2)
+main(current_file1, current_file2, current_bike_file)

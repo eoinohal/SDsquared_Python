@@ -109,7 +109,7 @@ def create_rebound_plot(data, file_name):
         y_axis_label="Absolute change in displacement (%)",
         tools="pan, reset, wheel_zoom, xwheel_zoom, fullscreen, examine, crosshair",
     )
-    reb_graph.x_range = Range1d(start=0, end=rangeSpeed)
+    reb_graph.x_range = Range1d(start=0, end=rangeSpeed * 1.1)
     reb_graph.y_range = Range1d(start=0, end=max(max(fork_rebound_displacement), max(shock_rebound_displacement)) * 1.1)
 
     reb_graph.scatter(fork_rebound_speed, fork_rebound_displacement, color="blue", size=4, legend_label="Fork Rebound", marker="circle")

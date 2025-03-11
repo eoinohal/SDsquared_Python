@@ -111,7 +111,7 @@ def decomposed_regression_plot(vals):
     speed1 = vals["speed1"]; speedR1 = sorted(speed1)[int(len(speed1)*0.9)]
     displacement1 = vals["displacement1"]
     regress1 = vals["regress1"]
-    speed2 = vals["speed2"]; speedR2 = sorted(speed2)[int(len(speed1)*0.9)]
+    speed2 = vals["speed2"]; speedR2 = sorted(speed2)[int(len(speed2)*0.9)]
     displacement2 = vals["displacement2"]
     regress2 = vals["regress2"]
 

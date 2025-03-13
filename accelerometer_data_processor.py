@@ -91,8 +91,6 @@ def process_accelerometer_file(file, bike_data):
                 )
             elif accelerometerInstance != 'Run finished\n':
                 timeOfRun = int(accelerometerInstance) / 1000
-    print(f"minimum shock value = {min(yShockValues)}")
-    print(f"maximum shock value = {max(yShockValues)}")
     # Generate xValues without numpy
     xValues = [i * (timeOfRun / lineCount) for i in range(lineCount)]
     shock = get_line_data(xValues, yShockValues)
@@ -208,4 +206,4 @@ def main(file_name):
 
 
 if __name__ == "__main__":
-    main("run_data/testrun1.txt")
+    main("run_data/testrun1.txt", "bike_profiles/full_range_values.txt")

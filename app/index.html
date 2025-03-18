@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemetry Header</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #2c3e50;
+            display: flex;
+            color: white;
+            font-family: Arial, sans-serif;
+            position: relative;
+            min-height: 60px;
+        }
+
+        .header-item {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .header-item:hover {
+            background-color: #34495e;
+        }
+
+        .header-item.active {
+            background-color: #3498db;
+            flex: 2;
+        }
+
+        .header-item.menu {
+            flex: 0.5;
+        }
+
+        .header-item.menu.active {
+            flex: 1.5;
+        }
+
+        .menu-content {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: #34495e;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            z-index: 10;
+        }
+
+        .header-item.menu.active .menu-content {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+
+        .menu-content ul {
+            list-style: none;
+            padding: 10px;
+        }
+
+        .menu-content li {
+            padding: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .menu-content li:hover {
+            background-color: #3e5c76;
+        }
+
+        .sub-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: #415d77;
+        }
+
+        .sub-menu.active {
+            max-height: 150px;
+        }
+
+        .sub-menu li {
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-item menu" data-target="menu">
+            Menu
+            <div class="menu-content">
+                <ul>
+                    <li data-target="File">
+                        File
+                        <ul class="sub-menu">
+                            <li>Select file 1</li>
+                            <li>Select file 2</li>
+                        </ul>
+                    </li>
+                    <li data-target="View">
+                        View
+                        <ul class="sub-menu">
+                            <li>Show/Hide Displacement graph</li>
+                            <li>Show/Hide </li>
+                            <li>Show/Hide </li>
+                        </ul>
+                    </li>
+                    <li data-target="ColourScheme">
+                        ColourScheme
+                        <ul class="sub-menu">
+                            <li>Fork Colour</li>
+                            <li>Shock Colour</li>
+                            <li>Average Colour</li>
+                        </ul>
+                    </li>
+                    <li data-target="Variables">
+                        Variables
+                        <ul class="sub-menu">
+                            <li>Fork length</li>
+                            <li>Shock length</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="header-item active" data-target="single">Single Run</div>
+        <div class="header-item" data-target="double">Compare Runs</div>
+        <div class="header-item" data-target="settings">Rider Profile</div>
+    </div>
+
+    <!-- Add an iframe to display the Bokeh Server -->
+    <iframe id="bokeh-iframe" src="http://localhost:5006" frameborder="0" width="100%" height="600"></iframe>
+
+    <script>
+        const headerItems = document.querySelectorAll('.header-item');
+        const mainItems = document.querySelectorAll('.header-item:not(.menu)');
+        const menuItems = document.querySelectorAll('.menu-content > ul > li');
+
+        // Header item click handling
+        headerItems.forEach(item => {
+            item.addEventListener('click', () => {
+                if (item.classList.contains('menu')) {
+                    item.classList.toggle('active');
+                } else {
+                    mainItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Menu item with sub-menu click handling
+        menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const subMenu = item.querySelector('.sub-menu');
+                if (subMenu) {
+                    subMenu.classList.toggle('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

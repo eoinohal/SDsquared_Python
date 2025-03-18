@@ -1,3 +1,6 @@
+# accelerometer_data_processor.py
+# Processes  accelerometer data, calculating key metrics like displacement, speed, and turning points then outputs formatted results for analysis
+
 import os.path
 
 def find_displacement_speed(arr1, arr2, arr1_times, arr2_times):

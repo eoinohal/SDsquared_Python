@@ -1,3 +1,6 @@
+# single_run.py
+# Displays fork and shock values for a run in accelerometer reading graph and compression/rebound scatter plots
+
 from bokeh.io import curdoc
 from bokeh.plotting import figure, show
 from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph, Button
@@ -7,8 +10,8 @@ import base64
 import os
 import numpy as np
 
-current_data_file = "run_data/testrun2.txt"
-current_bike_file = "bike_profiles/wills_megatower.txt"
+current_data_file = "data/run_data/testrun2.txt"
+current_bike_file = "data/bike_profiles/wills_megatower.txt"
 
 
 def load_and_process_data(file_path, bike_data):
@@ -188,7 +191,7 @@ def main(run_data_file, bike_file):
     curdoc().add_root(layout)
 
 
-run_folder_path = "run_data"
+run_folder_path = "data/run_data"
 if os.path.exists(run_folder_path):  # Check if folder exists
     run_txt_files = [(file, file) for file in os.listdir(run_folder_path) if file.lower().endswith(".txt")]
 else:
@@ -196,7 +199,7 @@ else:
 
 file_dropdown = Dropdown(label="Select a file", menu=run_txt_files)
 
-bike_folder_path = "bike_profiles"
+bike_folder_path = "data/bike_profiles"
 if os.path.exists(bike_folder_path):  # Check if folder exists
     bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
 else:
@@ -222,7 +225,7 @@ def upload_callback(attr, old, new):
     file_content = decoded.decode("utf-8")
 
     # Save the file temporarily
-    temp_file_path = "run_data/uploaded_file.txt"
+    temp_file_path = "data/run_data/uploaded_file.txt"
     with open(temp_file_path, "w", newline="") as f:
         f.write(file_content)
 

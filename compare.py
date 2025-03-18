@@ -12,7 +12,7 @@ import os
 # Default files
 current_file1 = "run_data/testrun1.txt"
 current_file2 = "run_data/testrun2.txt"
-current_bike_file = "bike_profiles/wills_megatower.txt"
+current_bike_file = "data/bike_profiles/wills_megatower.txt"
 
 # Load and process data
 def load_and_process_data(file_path, bike_data):
@@ -260,13 +260,13 @@ def main(text_file1, text_file2, bike_file):
     curdoc().add_root(layout)
 
 # File selection dropdowns
-folder_path = "run_data"
+folder_path = "data/run_data"
 if os.path.exists(folder_path):  # Check if folder exists
     txt_files = [(file, file) for file in os.listdir(folder_path) if file.lower().endswith(".txt")]
 else:
     txt_files = []
 
-bike_folder_path = "bike_profiles"
+bike_folder_path = "data/bike_profiles"
 if os.path.exists(bike_folder_path):  # Check if folder exists
     bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
 else:
@@ -299,7 +299,7 @@ def upload_callback1(attr, old, new):
     global current_file1
     decoded = base64.b64decode(new)
     file_content = decoded.decode("utf-8")
-    temp_file_path = "run_data/uploaded_file1.txt"
+    temp_file_path = "data/run_data/uploaded_file1.txt"
     with open(temp_file_path, "w", newline="") as f:
         f.write(file_content)
     current_file1 = temp_file_path
@@ -309,7 +309,7 @@ def upload_callback2(attr, old, new):
     global current_file2
     decoded = base64.b64decode(new)
     file_content = decoded.decode("utf-8")
-    temp_file_path = "run_data/uploaded_file2.txt"
+    temp_file_path = "data/run_data/uploaded_file2.txt"
     with open(temp_file_path, "w", newline="") as f:
         f.write(file_content)
     current_file2 = temp_file_path

@@ -2,7 +2,7 @@
 
 **w/c 11.03.25**  
 _Will E_
-- Get Pi 0w2 to run some sensible code and output regression values  
+- Get Pi 0w2 to output regression values  
 - Future : make it accept run files in the form header - comment - data
 _Eoin_ 
 - Launch as an application

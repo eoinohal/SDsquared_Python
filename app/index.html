@@ -22,7 +22,6 @@
         }
 
         .header-item {
-            flex: 1;
             text-align: center;
             padding: 20px;
             cursor: pointer;
@@ -37,22 +36,21 @@
 
         .header-item.active {
             background-color: #3498db;
-            flex: 2;
         }
 
         .header-item.menu {
-            flex: 0.5;
-        }
-
-        .header-item.menu.active {
-            flex: 1.5;
+            width: 300px;
+            flex: none;
+            text-align: left;
+            padding-left: 20px;
         }
 
         .menu-content {
-            position: absolute;
-            top: 100%;
+            position: fixed;
+            top: 60px;
             left: 0;
-            width: 100%;
+            width: 300px;
+            height: calc(100vh - 60px);
             background-color: #34495e;
             max-height: 0;
             overflow: hidden;
@@ -61,7 +59,7 @@
         }
 
         .header-item.menu.active .menu-content {
-            max-height: 100vh;
+            max-height: calc(100vh - 60px);
             overflow-y: auto;
         }
 
@@ -95,6 +93,33 @@
             padding: 8px 20px;
             font-size: 0.9em;
         }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="checkbox"],
+        input[type="number"],
+        input[type="color"],
+        input[type="file"] {
+            cursor: pointer;
+        }
+
+        .sub-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sub-menu-header button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+        }
     </style>
 </head>
 <body>
@@ -104,33 +129,88 @@
             <div class="menu-content">
                 <ul>
                     <li data-target="File">
-                        File
+                        <div class="sub-menu-header">
+                            Run file
+                            <button onclick="toggleSubMenu(this)">▼</button>
+                        </div>
                         <ul class="sub-menu">
-                            <li>Select file 1</li>
-                            <li>Select file 2</li>
+                            <li>
+                                <label>
+                                    <input type="file" id="file-input">
+                                </label>
+                            </li>
                         </ul>
                     </li>
                     <li data-target="View">
-                        View
+                        <div class="sub-menu-header">
+                            Graph views
+                            <button onclick="toggleSubMenu(this)">▼</button>
+                        </div>
                         <ul class="sub-menu">
-                            <li>Show/Hide Displacement graph</li>
-                            <li>Show/Hide </li>
-                            <li>Show/Hide </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" id="toggle-displacement">
+                                    Displacement graph
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" id="toggle-compression">
+                                    Compression graph
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" id="toggle-rebound">
+                                    Rebound graph
+                                </label>
+                            </li>
                         </ul>
                     </li>
                     <li data-target="ColourScheme">
-                        ColourScheme
+                        <div class="sub-menu-header">
+                            Colour scheme
+                            <button onclick="toggleSubMenu(this)">▼</button>
+                        </div>
                         <ul class="sub-menu">
-                            <li>Fork Colour</li>
-                            <li>Shock Colour</li>
-                            <li>Average Colour</li>
+                            <li>
+                                <label>
+                                    Fork Colour:
+                                    <input type="color" id="fork-color" value="#ff0000">
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    Shock Colour:
+                                    <input type="color" id="shock-color" value="#00ff00">
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    Average Colour:
+                                    <input type="color" id="average-color" value="#0000ff">
+                                </label>
+                            </li>
                         </ul>
                     </li>
                     <li data-target="Variables">
-                        Variables
+                        <div class="sub-menu-header">
+                            Variables
+                            <button onclick="toggleSubMenu(this)">▼</button>
+                        </div>
                         <ul class="sub-menu">
-                            <li>Fork length</li>
-                            <li>Shock length</li>
+                            <li>
+                                <label>
+                                    Fork length:
+                                    <input type="number" id="fork-length" min="0" step="1" value="0">
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    Shock length:
+                                    <input type="number" id="shock-length" min="0" step="1" value="0">
+                                </label>
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -145,32 +225,81 @@
     <iframe id="bokeh-iframe" src="http://localhost:5006" frameborder="0" width="100%" height="600"></iframe>
 
     <script>
-        const headerItems = document.querySelectorAll('.header-item');
-        const mainItems = document.querySelectorAll('.header-item:not(.menu)');
-        const menuItems = document.querySelectorAll('.menu-content > ul > li');
+        document.addEventListener('DOMContentLoaded', () => {
+            const headerItems = document.querySelectorAll('.header-item');
+            const mainItems = document.querySelectorAll('.header-item:not(.menu)');
+            const menuContent = document.querySelector('.menu-content');
+            const iframe = document.getElementById('bokeh-iframe');
 
-        // Header item click handling
-        headerItems.forEach(item => {
-            item.addEventListener('click', () => {
-                if (item.classList.contains('menu')) {
-                    item.classList.toggle('active');
-                } else {
-                    mainItems.forEach(i => i.classList.remove('active'));
-                    item.classList.add('active');
-                }
+            // Header item click handling
+            headerItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (item.classList.contains('menu')) {
+                        // Only toggle the menu if the click is on the heading
+                        if (e.target === item || e.target.classList.contains('sub-menu-header')) {
+                            item.classList.toggle('active');
+                        }
+                    } else {
+                        mainItems.forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        sendDataToBackend({ selectedView: item.dataset.target });
+                    }
+                });
+            });
+
+            // Prevent clicks inside the menu content from closing the menu
+            menuContent.addEventListener('click', (e) => {
+                e.stopPropagation(); // Stop event propagation
+            });
+
+            // Function to send data to the backend
+            function sendDataToBackend(data) {
+                iframe.contentWindow.postMessage(data, '*');
+            }
+
+            // Event listeners for input changes
+            document.getElementById('file-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                sendDataToBackend({ file: file.name });
+            });
+
+            document.getElementById('toggle-displacement').addEventListener('change', (e) => {
+                sendDataToBackend({ showDisplacement: e.target.checked });
+            });
+
+            document.getElementById('toggle-compression').addEventListener('change', (e) => {
+                sendDataToBackend({ showCompression: e.target.checked });
+            });
+
+            document.getElementById('toggle-rebound').addEventListener('change', (e) => {
+                sendDataToBackend({ showRebound: e.target.checked });
+            });
+
+            document.getElementById('fork-color').addEventListener('change', (e) => {
+                sendDataToBackend({ forkColor: e.target.value });
+            });
+
+            document.getElementById('shock-color').addEventListener('change', (e) => {
+                sendDataToBackend({ shockColor: e.target.value });
+            });
+
+            document.getElementById('average-color').addEventListener('change', (e) => {
+                sendDataToBackend({ averageColor: e.target.value });
+            });
+
+            document.getElementById('fork-length').addEventListener('change', (e) => {
+                sendDataToBackend({ forkLength: e.target.value });
+            });
+
+            document.getElementById('shock-length').addEventListener('change', (e) => {
+                sendDataToBackend({ shockLength: e.target.value });
             });
         });
 
-        // Menu item with sub-menu click handling
-        menuItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const subMenu = item.querySelector('.sub-menu');
-                if (subMenu) {
-                    subMenu.classList.toggle('active');
-                }
-            });
-        });
+        function toggleSubMenu(button) {
+            const subMenu = button.parentElement.nextElementSibling;
+            subMenu.classList.toggle('active');
+        }
     </script>
 </body>
 </html>

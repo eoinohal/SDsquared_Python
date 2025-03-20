@@ -10,7 +10,7 @@ import base64
 import os
 import numpy as np
 
-current_data_file = "data/run_data/testrun2.txt"
+current_data_file = "data/run_data/2024TestDay/testrun2.txt"
 current_bike_file = "data/bike_profiles/wills_megatower.txt"
 
 

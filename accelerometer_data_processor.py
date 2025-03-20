@@ -206,4 +206,4 @@ def main(file_name):
 
 
 if __name__ == "__main__":
-    main("data/run_data/testrun1.txt", "bike_profiles/full_range_values.txt")
+    main("data/run_data/2024TestDay/testrun1.txt", "bike_profiles/full_range_values.txt")

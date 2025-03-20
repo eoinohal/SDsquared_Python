@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD² Telemetry</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #fileTree {
+            margin-top: 20px;
+        }
+
+        .folder, .file {
+            margin-left: 20px;
+        }
+
+        .folder > .name {
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .folder > .name .icon {
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }
+
+        .folder.expanded > .name .icon {
+            transform: rotate(90deg);
+        }
+
+        .folder > .children {
+            display: none;
+        }
+
+        .folder.expanded > .children {
+            display: block;
+        }
+
+        .file {
+            margin-left: 20px;
+        }
+
+        button {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Tree Visualiser</h1>
+    <button id="selectRoot">Select Root Directory</button>
+    <input type="file" id="fileInput" webkitdirectory directory multiple />
+    <div id="fileTree"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectRootButton = document.getElementById('selectRoot');
+            const fileInput = document.getElementById('fileInput');
+            const fileTree = document.getElementById('fileTree');
+
+            // Trigger file input when the button is clicked
+            selectRootButton.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // Handle file selection
+            fileInput.addEventListener('change', function(event) {
+                const files = event.target.files;
+                if (files.length > 0) {
+                    // Clear the existing file tree
+                    fileTree.innerHTML = '';
+
+                    // Create a root folder
+                    const rootFolder = createFolderElement('Root');
+                    fileTree.appendChild(rootFolder);
+
+                    // Build the file tree structure
+                    const data = buildFileTree(files);
+                    renderTree(rootFolder, data);
+                }
+            });
+        });
+
+        function createFolderElement(name) {
+            const folder = document.createElement('div');
+            folder.className = 'folder';
+            folder.innerHTML = `
+                <div class="name">
+                    <span class="icon">▶</span>
+                    ${name}
+                </div>
+                <div class="children"></div>
+            `;
+            folder.querySelector('.name').addEventListener('click', function() {
+                folder.classList.toggle('expanded');
+            });
+            return folder;
+        }
+
+        function createFileElement(name) {
+            const file = document.createElement('div');
+            file.className = 'file';
+            file.textContent = name;
+            return file;
+        }
+
+        function renderTree(parentElement, data) {
+            const childrenContainer = parentElement.querySelector('.children');
+            data.children.forEach(child => {
+                if (child.children) {
+                    const folderElement = createFolderElement(child.name);
+                    childrenContainer.appendChild(folderElement);
+                    renderTree(folderElement, child);
+                } else {
+                    const fileElement = createFileElement(child.name);
+                    childrenContainer.appendChild(fileElement);
+                }
+            });
+        }
+
+        function buildFileTree(files) {
+            const root = { name: 'Run Days:', children: [] };
+            const pathMap = { '': root };
+
+            for (const file of files) {
+                const path = file.webkitRelativePath || file.name;
+                const parts = path.split('/');
+                let current = root;
+
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const folderName = parts[i];
+                    const pathKey = parts.slice(0, i + 1).join('/');
+
+                    if (!pathMap[pathKey]) {
+                        const newFolder = { name: folderName, children: [] };
+                        current.children.push(newFolder);
+                        pathMap[pathKey] = newFolder;
+                    }
+
+                    current = pathMap[pathKey];
+                }
+
+                const fileName = parts[parts.length - 1];
+                current.children.push({ name: fileName, type: 'file' });
+            }
+
+            return root;
+        }
+    </script>
+</body>
+</html>

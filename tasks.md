@@ -5,6 +5,8 @@ _Will E_
 - Comments within the run files
 - Get Pi 0w2 to run some sensible code and output regression values  
 
+**w/c 01.04.25**  
 _Eoin_ 
-- Launch as an application
-- Choose between analyse and compare
+- Compare dynamically
+- Communication frontend/backend
+- Final frontend changes

@@ -1,5 +1,5 @@
 ## Frontend
-Run <b>index.html</b> to generate the dashboard
+Run <b>electron main.js</b> to generate electron application
 
 ### To do:
 Launch as application

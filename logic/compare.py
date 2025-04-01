@@ -1,153 +1,208 @@
 # compare.py
-# Compares fork and shock recordings separately from two runs using displacement graph and scatter plot from bokeh
+# Compare fork and shock values from 2 runs in accelerometer reading graph and compression/rebound scatter plots
+# WIP to make dynamic
 
 from bokeh.io import curdoc
+from bokeh.plotting import figure
+from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph, CheckboxGroup, ColumnDataSource
 from bokeh.layouts import grid, row, column
-from bokeh.models import Div, FileInput, Dropdown, Paragraph
-from plot_functions import decomposed_displacement_plot, decomposed_regression_plot
-from data_processing import load_and_process_data, process_bike_data, fork_displacement_values, shock_displacement_values, fork_compression_values, fork_rebound_values, shock_compression_values, shock_rebound_values
+from bokeh.palettes import Category10
+from data_processing import load_and_process_data, process_bike_data, multi_displacement_values, multi_regression_values
 import base64
 import os
+# Configuration
+MAX_FILES = 10
+COLORS = Category10[MAX_FILES]
+DEFAULT_FILES = ["../data/run_data/testrun1.txt", "../data/run_data/testrun2.txt"]
+DEFAULT_BIKE_FILE = "../data/bike_profiles/wills_megatower.txt"
 
-# Default files
-current_file1 = "../data/run_data/testrun1.txt"
-current_file2 = "../data/run_data/testrun2.txt"
-current_bike_file = "../data/bike_profiles/wills_megatower.txt"
 
-# Main function
-def main(text_file1, text_file2, bike_file):
-    global current_file1, current_file2
-    current_file1 = text_file1
-    current_file2 = text_file2
-    curdoc().clear()
+def initialize_default_files():
+    """Load default files if they exist"""
+    global active_files
+    for file_path in DEFAULT_FILES:
+        if os.path.exists(file_path):
+            active_files[file_path] = None
 
-    bike_data = process_bike_data(bike_file)
 
-    # Load and process data for both files
-    data1 = load_and_process_data(text_file1, bike_data)
-    data2 = load_and_process_data(text_file2, bike_data)
+def load_bike_data():
+    """Load and process bike profile data"""
+    if os.path.exists(current_bike_file):
+        return process_bike_data(current_bike_file)
+    return None
 
-    if data1 is not None and data2 is not None:
-        # Create fork plots
-        fork_displacement_graph = decomposed_displacement_plot(fork_displacement_values(data1, data2, text_file1, text_file2))
-        fork_comp_graph = decomposed_regression_plot(fork_compression_values(data1, data2, text_file1, text_file2))
-        fork_reb_graph = decomposed_regression_plot(fork_rebound_values(data1, data2, text_file1, text_file2))
 
-        # Create shock plots
-        shock_displacement_graph = decomposed_displacement_plot(shock_displacement_values(data1, data2, text_file1, text_file2))
-        shock_comp_graph = decomposed_regression_plot(shock_compression_values(data1, data2, text_file1, text_file2))
-        shock_reb_graph = decomposed_regression_plot(shock_rebound_values(data1, data2, text_file1, text_file2))
+def update_processed_data():
+    """Ensure all active files have processed data"""
+    bike_data = load_bike_data()
+    if bike_data is None:
+        print("Error: Could not load bike data")
+        return False
 
-        # Configure graphs
-        for graph in [fork_displacement_graph, fork_comp_graph, fork_reb_graph, shock_displacement_graph,
-                      shock_comp_graph, shock_reb_graph]:
-            graph.toolbar.logo = None
-            graph.legend.click_policy = "hide"
+    for file_path in list(active_files.keys()):
+        if active_files[file_path] is None:
+            processed_data = load_and_process_data(file_path, bike_data)
+            if processed_data is not None:
+                active_files[file_path] = processed_data
+            else:
+                print(f"Removing invalid file: {file_path}")
+                del active_files[file_path]
 
-        # Create headers and subheadings
-        head = Div(text="<h1 style='font-size:40px;'>Comparison of Accelerometer Data</h1>")
-        fork_subheading = Div(text="<h2 style='font-size:30px;'>Fork Values</h2>")
-        shock_subheading = Div(text="<h2 style='font-size:30px;'>Shock Values</h2>")
-        displacement_subsubheading1 = Div(text="<h3 style='font-size:25px;'>Displacement Plot</h3>")
-        regression_subsubheading1 = Div(text="<h3 style='font-size:25px;'>Regression Lines</h3>")
-        displacement_subsubheading2 = Div(text="<h3 style='font-size:25px;'>Displacement Plot</h3>")
-        regression_subsubheading2 = Div(text="<h3 style='font-size:25px;'>Regression Lines</h3>")
+    return len(active_files) >= 2
 
-        # Create dashboard layout
-        dashboard_layout = column(
-            head,
-            top_select_layout,
-            fork_subheading,
-            displacement_subsubheading1,
-            fork_displacement_graph,
-            regression_subsubheading1,
-            row(fork_comp_graph, fork_reb_graph, sizing_mode='stretch_width'),
-            shock_subheading,
-            displacement_subsubheading2,
-            shock_displacement_graph,
-            regression_subsubheading2,
-            row(shock_comp_graph, shock_reb_graph, sizing_mode='stretch_width'),
-            sizing_mode="stretch_both"
+
+def create_displacement_plot(component='fork'):
+    """Create displacement plot for fork or shock"""
+    if not update_processed_data():
+        return Div(text=f"<p style='color:red'>Error: Need at least 2 valid files to compare {component}</p>")
+
+    values = multi_displacement_values(active_files, component=component)
+    if not values:
+        return Div(text=f"<p style='color:red'>Error generating {component} displacement data</p>")
+
+    plot = figure(
+        title=values["title"],
+        sizing_mode="stretch_width",
+        height=450,
+        x_axis_label="Time (s)",
+        y_axis_label="Percentage displacement (%)",
+        tools="pan,reset,wheel_zoom,xwheel_zoom,fullscreen,examine,crosshair",
+    )
+
+    # Set ranges
+    plot.x_range = Range1d(start=0, end=values["timeOfRun"], bounds=(0, values["timeOfRun"]))
+    max_displacement = max(max(file_data["y_values"]) for file_data in values["files"])
+    plot.y_range = Range1d(start=0, end=max_displacement * 1.1, bounds=(0, max_displacement * 1.1))
+
+    # Plot each file's data
+    for file_data in values["files"]:
+        # Main displacement line
+        plot.line(
+            file_data["x_values"],
+            file_data["y_values"],
+            legend_label=file_data["name"],
+            color=file_data["color"],
+            line_width=0.5
         )
 
-        layout = column(dashboard_layout, sizing_mode="stretch_both")
-    else:
-        layout = column(top_select_layout, sizing_mode="stretch_both")
+        # Peaks and troughs
+        if file_data["peak_times"] and file_data["peaks"]:
+            plot.scatter(
+                file_data["peak_times"],
+                file_data["peaks"],
+                color=file_data["color"],
+                size=4,
+                legend_label=file_data["peaks_name"],
+                marker="circle"
+            )
+
+        if file_data["trough_times"] and file_data["troughs"]:
+            plot.scatter(
+                file_data["trough_times"],
+                file_data["troughs"],
+                color=file_data["color"],
+                size=4,
+                legend_label=file_data["troughs_name"],
+                marker="inverted_triangle"
+            )
+
+    plot.toolbar.logo = None
+    plot.legend.click_policy = "hide"
+    return plot
+
+
+def create_regression_plot(component='fork', movement_type='compression'):
+    """Create regression plot for compression/rebound"""
+    if not update_processed_data():
+        return Div(
+            text=f"<p style='color:red'>Error: Need at least 2 valid files to compare {component} {movement_type}</p>")
+
+    values = multi_regression_values(active_files, component=component, movement_type=movement_type)
+    if not values:
+        return Div(text=f"<p style='color:red'>Error generating {component} {movement_type} data</p>")
+
+    plot = figure(
+        title=values["title"],
+        sizing_mode="stretch_width",
+        height=450,
+        x_axis_label="Speed of displacement (%/s)",
+        y_axis_label="Absolute change in displacement (%)",
+        tools="pan,reset,wheel_zoom,xwheel_zoom,fullscreen,examine,crosshair",
+    )
+
+    # Calculate axis ranges
+    all_speeds = [speed for file_data in values["files"] for speed in file_data["speed"]]
+    all_displacements = [disp for file_data in values["files"] for disp in file_data["displacement"]]
+
+    if all_speeds and all_displacements:
+        speed_r = sorted(all_speeds)[int(len(all_speeds) * 0.9)]
+        plot.x_range = Range1d(start=0, end=speed_r * 1.1)
+        plot.y_range = Range1d(start=0, end=max(all_displacements) * 1.1)
+
+    # Plot each file's data
+    for file_data in values["files"]:
+        plot.scatter(
+            file_data["speed"],
+            file_data["displacement"],
+            color=file_data["color"],
+            size=4,
+            legend_label=file_data["name"],
+            marker="circle"
+        )
+
+        if file_data["regress"]:
+            plot.line(
+                x=file_data["regress"],
+                y=file_data["displacement"],
+                color=file_data["color"],
+                legend_label=f"{file_data['name']} Regression",
+                line_width=2
+            )
+
+    plot.toolbar.logo = None
+    plot.legend.click_policy = "hide"
+    return plot
+
+
+def update_dashboard():
+    """Update all dashboard components"""
+    curdoc().clear()
+
+    if len(active_files) < 2:
+        curdoc().add_root(Div(text="<h2 style='color:orange'>Please select at least 2 files to compare</h2>"))
+        return
+
+    # Create plots
+    fork_displacement = create_displacement_plot(component='fork')
+    fork_compression = create_regression_plot(component='fork', movement_type='compression')
+    fork_rebound = create_regression_plot(component='fork', movement_type='rebound')
+
+    shock_displacement = create_displacement_plot(component='shock')
+    shock_compression = create_regression_plot(component='shock', movement_type='compression')
+    shock_rebound = create_regression_plot(component='shock', movement_type='rebound')
+
+    # Create dashboard layout
+    dashboard = column(
+        Div(text="<h1 style='text-align:center'>Suspension Performance Comparison</h1>"),
+        Div(text="<h2 style='font-size:30px;color:white'>Fork Values</h2>"),
+        Div(text="<h3 style='font-size:25px;color:white'>Displacement Plot</h3>"),
+        fork_displacement,
+        Div(text="<h3 style='font-size:25px;color:white'>Regression Lines</h3>"),
+        Div(text="<h3 style='font-size:25px;color:white'>Regression Lines</h3>"),
+        row(fork_compression, fork_rebound, sizing_mode='stretch_width'),
+        Div(text="<h2 style='font-size:30px;color:white'>Shock Values</h2>"),
+        Div(text="<h3 style='font-size:25px;color:white'>Displacement Plot</h3>"),
+        shock_displacement,
+        Div(text="<h3 style='font-size:25px;color:white'>Regression Lines</h3>"),
+        row(shock_compression, shock_rebound, sizing_mode='stretch_width'),
+        sizing_mode="stretch_both"
+    )
 
     # Set theme and display
     curdoc().theme = "dark_minimal"
-    curdoc().clear()
-    curdoc().add_root(layout)
+    curdoc().add_root(dashboard)
 
-# File selection dropdowns
-folder_path = "../data/run_data"
-if os.path.exists(folder_path):  # Check if folder exists
-    txt_files = [(file, file) for file in os.listdir(folder_path) if file.lower().endswith(".txt")]
-else:
-    txt_files = []
 
-bike_folder_path = "../data/bike_profiles"
-if os.path.exists(bike_folder_path):  # Check if folder exists
-    bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
-else:
-    bike_txt_files = []
-
-bike_dropdown = Dropdown(label="Select a file", menu=bike_txt_files)
-
-dropdown1 = Dropdown(label="Select file 1", menu=txt_files)
-dropdown2 = Dropdown(label="Select file 2", menu=txt_files)
-
-def file1_selected(event):
-    global current_file1
-    current_file1 = folder_path + "/" + event.item
-    main(current_file1, current_file2, current_bike_file)
-
-def file2_selected(event):
-    global current_file2
-    current_file2 = folder_path + "/" + event.item
-    main(current_file1, current_file2, current_bike_file)
-
-def bike_selected(event):
-    main(current_file1, current_file2, bike_folder_path+"/"+event.item)
-
-dropdown1.on_event("menu_item_click", file1_selected)
-dropdown2.on_event("menu_item_click", file2_selected)
-
-# File upload callbacks
-def upload_callback1(attr, old, new):
-    global current_file1
-    decoded = base64.b64decode(new)
-    file_content = decoded.decode("utf-8")
-    temp_file_path = "run_data/uploaded_file1.txt"
-    with open(temp_file_path, "w", newline="") as f:
-        f.write(file_content)
-    current_file1 = temp_file_path
-    main(current_file1, current_file2, current_bike_file)
-
-def upload_callback2(attr, old, new):
-    global current_file2
-    decoded = base64.b64decode(new)
-    file_content = decoded.decode("utf-8")
-    temp_file_path = "run_data/uploaded_file2.txt"
-    with open(temp_file_path, "w", newline="") as f:
-        f.write(file_content)
-    current_file2 = temp_file_path
-    main(current_file1, current_file2, current_bike_file)
-
-file_input1 = FileInput(accept=".txt")
-file_input1.on_change("value", upload_callback1)
-
-file_input2 = FileInput(accept=".txt")
-file_input2.on_change("value", upload_callback2)
-
-bike_dropdown.on_event("menu_item_click", bike_selected)
-bike_select_text = Paragraph(text="Select bike here: ")
-
-# Layout
-file1_select_text = Paragraph(text="Select file 1 here: ")
-file2_select_text = Paragraph(text="Select file 2 here: ")
-
-top_select_layout = row(file1_select_text, file_input1, dropdown1, file2_select_text, file_input2, dropdown2, bike_dropdown)
-
-# Initialize the dashboard
-main(current_file1, current_file2, current_bike_file)
+# Initialize
+initialize_default_files()
+update_dashboard()

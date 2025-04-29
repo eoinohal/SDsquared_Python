@@ -3,11 +3,10 @@ import subprocess
 import sys
 import psutil
 import signal
-import time # Import time
+import time
 
 app = Flask(__name__)
 
-# Global variable to keep track of the Bokeh server process
 bokeh_process = None
 
 
@@ -15,7 +14,6 @@ def kill_bokeh_server():
     """Kill any running Bokeh server processes."""
     global bokeh_process
 
-    # First try to kill our tracked process
     if bokeh_process is not None:
         try:
             print(f"Attempting to terminate tracked process {bokeh_process.pid}")
@@ -61,7 +59,6 @@ def update_selected_files():
 
     selected_files = data.get('selectedFiles', [])
 
-    # Determine the appropriate URL based on number of files
     if len(selected_files) == 0:  # no files
         print('No files selected')
         return jsonify({
@@ -78,7 +75,7 @@ def update_selected_files():
         print('1 file selected:', selected_file)
         try:
             bokeh_process = subprocess.Popen(
-                [sys.executable, "-m", "bokeh", "serve", "--show", "single_run.py", "--args", selected_file],
+                [sys.executable, "-m", "bokeh", "serve", "single_run.py", "--args", selected_file],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
@@ -101,7 +98,7 @@ def update_selected_files():
         print('Multiple files selected:', file_names)
         try:
             bokeh_process = subprocess.Popen(
-                [sys.executable, "-m", "bokeh", "serve", "--show", "multi_runs.py", "--args", file_names],
+                [sys.executable, "-m", "bokeh", "serve", "multi_runs.py", "--args", file_names],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )

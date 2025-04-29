@@ -1,34 +1,18 @@
 from bokeh.io import curdoc
-from bokeh.plotting import figure, show
-from bokeh.models import Range1d, Div, TextInput, FileInput, Dropdown, Paragraph, Button
-from bokeh.layouts import grid, row, column
-from accelerometer_data_processor import process_accelerometer_file
-import base64
-import os
-import numpy as np
+from bokeh.plotting import figure
+from bokeh.models import Range1d, Div
+from bokeh.layouts import row, column
+from data_processing import process_bike_data, load_and_process_data
+import sys
 
-current_data_file = "../data/run_data/testrun2.txt"
+if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
+    current_data_file = "../data/run_data/"+str(sys.argv[1])
+else:
+    current_data_file = "../data/run_data/RUN1.txt"
 current_bike_file = "../data/bike_profiles/wills_megatower.txt"
 
-def load_and_process_data(file_path, bike_data):
-    # Load and process accelerometer data from a file.
-    data = process_accelerometer_file(file_path, bike_data)
-    return data
 
-def process_bike_data(file_path):
-    values = []
-
-    with open(file_path, 'r') as file:
-        for line in file:
-            parts = line.strip().split(":")  # Split by ':'
-            if len(parts) == 2:  # Ensure there are two parts (key and value)
-                key, value = parts[0].strip(), parts[1].strip()
-                if key in ["rear_sus_min", "rear_sus_max", "front_sus_min", "front_sus_max"]:
-                    values.append(int(value))  # Convert to integer and store
-
-    return values
-
-def create_displacement_plot(data, file_name, bike_file):
+def create_displacement_plot(data, file_name):
     # Create a displacement plot using the processed data.
     time_of_run = data["timeOfRun"]
     x_values = data["xValues"]
@@ -44,7 +28,7 @@ def create_displacement_plot(data, file_name, bike_file):
     shock_troughs = data["shockTroughs"]
 
     displacement_graph = figure(
-        title=f"Percentage Displacement Plot: {file_name}, {bike_file}",
+        title=f"Percentage Displacement Plot: {file_name}",
         sizing_mode="stretch_width",
         height=450,
         x_axis_label="Time (s)",
@@ -145,23 +129,17 @@ def create_stats_div(data):
     stats_div = Div(text=html_content)
     return stats_div
 
-def main(run_data_file, bike_file):
-    global current_data_file
-    current_data_file = run_data_file
+def main(run_file, bike_file):
     curdoc().clear()
-    #top_select_layout = row(file_select_text,file_input, file_dropdown, bike_select_text, bike_dropdown)
     # Load and process data
     bike_data = process_bike_data(bike_file)
-    data = load_and_process_data(run_data_file, bike_data)
+    data = load_and_process_data(run_file, bike_data)
 
     if data is not None:
         # Create plots
-        displacement_graph = create_displacement_plot(data, run_data_file, bike_file)
-        comp_graph = create_compression_plot(data, run_data_file)
-        reb_graph = create_rebound_plot(data, run_data_file)
-
-        # Create stats div
-        stats_div = create_stats_div(data)
+        displacement_graph = create_displacement_plot(data, run_file)
+        comp_graph = create_compression_plot(data, run_file)
+        reb_graph = create_rebound_plot(data, run_file)
 
         # Configure graphs
         for graph in [displacement_graph, comp_graph, reb_graph]:
@@ -181,7 +159,6 @@ def main(run_data_file, bike_file):
             sizing_mode="stretch_both"
         )
 
-
         layout = column(dashboard_layout, sizing_mode="stretch_both")
 
     # Set theme and display
@@ -189,57 +166,5 @@ def main(run_data_file, bike_file):
     curdoc().clear()
     curdoc().add_root(layout)
 
-
-run_folder_path = "../data/run_data"
-if os.path.exists(run_folder_path):  # Check if folder exists
-    run_txt_files = [(file, file) for file in os.listdir(run_folder_path) if file.lower().endswith(".txt")]
-else:
-    run_txt_files = []
-
-#file_dropdown = Dropdown(label="Select a file", menu=run_txt_files)
-
-bike_folder_path = "../data/bike_profiles"
-if os.path.exists(bike_folder_path):  # Check if folder exists
-    bike_txt_files = [(file, file) for file in os.listdir(bike_folder_path) if file.lower().endswith(".txt")]
-else:
-    bike_txt_files = []
-
-#bike_dropdown = Dropdown(label="Select a file", menu=bike_txt_files)
-
-
-def file_selected(event):
-    main(run_folder_path+"/"+event.item, current_bike_file)
-
-def bike_selected(event):
-    main(current_data_file, bike_folder_path+"/"+event.item)
-
-def on_suspension_change(attr, old, new):
-    main(current_data_file)
-
-def upload_callback(attr, old, new):
-    global current_data_file
-
-    # Decode the uploaded file content
-    decoded = base64.b64decode(new)
-    file_content = decoded.decode("utf-8")
-
-    # Save the file temporarily
-    temp_file_path = "../run_data/uploaded_file.txt"
-    with open(temp_file_path, "w", newline="") as f:
-        f.write(file_content)
-
-    # Update the current file and refresh the dashboard
-    current_data_file = temp_file_path
-    main(current_data_file, current_bike_file)
-
-
-file_input = FileInput(accept=".txt")
-file_input.on_change("value", upload_callback)
-
-#file_dropdown.on_event("menu_item_click", file_selected)
-#file_select_text = Paragraph(text="Select file here: ")
-
-#bike_dropdown.on_event("menu_item_click", bike_selected)
-#bike_select_text = Paragraph(text="Select bike here: ")
 
 main(current_data_file, current_bike_file)

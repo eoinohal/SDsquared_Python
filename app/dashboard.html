@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SD² Run Dashboard</title>
+    <title>SD² Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,16 +55,84 @@
             color: #666;
             background-color: #1e1e1e;
         }
+
         .folder, .file {
             position: relative;
-            padding-left: 20px;
-            padding: 5px;
+            padding: 5px 5px 5px 30px;
             cursor: pointer;
             border-bottom: 1px solid #333;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            user-select: none;
         }
+
+        .folder::before {
+            content: "+";
+            position: absolute;
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            line-height: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #e0e0e0;
+            background-color: #555;
+            border-radius: 2px;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .folder.expanded::before {
+            content: "-";
+        }
+
+        .folder::after, .file::after {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: #666;
+        }
+
+        .folder .connector::before, .file .connector::before {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            width: 10px;
+            height: 1px;
+            background-color: #666;
+            z-index: 1;
+        }
+
+        .folder:last-child::after, .file:last-child::after {
+            bottom: 50%;
+        }
+
+        .folder:hover, .file:hover {
+            background-color: #2a2a2a;
+        }
+
+        .sub-container {
+            margin-left: 20px;
+        }
+
+        .connector {
+            position: absolute;
+            left: 0;
+            width: 28px;
+            height: 100%;
+        }
+
+        .folder > span:not(.connector),
+        .file > span:not(.connector) {
+            margin-left: 10px;
+        }
+
         .file-name {
             flex-grow: 1;
         }
@@ -75,39 +143,14 @@
         .selected .file-actions {
             display: flex;
         }
-        .folder:hover, .file:hover {
-            background-color: #333;
-        }
-        .folder::before, .file::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 10px;
-            width: 10px;
-            height: 1px;
-            background-color: #e0e0e0;
-        }
-        .folder::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 1px;
-            background-color: #e0e0e0;
-        }
-        .folder:last-child::after {
-            height: 10px;
-        }
-        .file::before {
-            left: 10px;
-        }
         .selected {
             background-color: #3a75d5;
         }
         .file.selected {
             background-color: #3a75d5;
         }
+
+        /* Buttons and icons */
         #upload-button {
             margin-bottom: 20px;
             padding: 8px 16px;
@@ -159,184 +202,281 @@
         </div>
     </div>
 
-<script>
-    let bokehServerActive = false;
-    let lastCheckTime = 0;
-    const CHECK_INTERVAL = 5000;
-    const selectedFiles = new Map();
+    <script>
+        let bokehServerActive = false;
+        let lastCheckTime = 0;
+        const CHECK_INTERVAL = 5000;
+        const selectedFiles = new Map();
 
-    async function checkBokehServer() {
-        const now = Date.now();
-        if (now - lastCheckTime < CHECK_INTERVAL) return;
-        lastCheckTime = now;
+        async function checkBokehServer() {
+            const now = Date.now();
+            if (now - lastCheckTime < CHECK_INTERVAL) return;
+            lastCheckTime = now;
 
-        const iframe = document.getElementById('bokeh-iframe');
-        const fallback = document.getElementById('fallback-message');
-        const bokehUrl = 'http://localhost:5006/single_run';
+            const iframe = document.getElementById('bokeh-iframe');
+            const fallback = document.getElementById('fallback-message');
+            const bokehUrl = 'http://localhost:5006/single_run';
 
-        try {
-            const response = await fetch(bokehUrl, {
-                method: 'HEAD',
-                mode: 'no-cors',
-                cache: 'no-store'
-            });
-
-            if (!bokehServerActive) {
-                bokehServerActive = true;
-                if (iframe.src !== bokehUrl) {
-                    iframe.src = bokehUrl;
-                }
-                iframe.style.display = 'block';
-                fallback.style.display = 'none';
-            }
-        } catch (error) {
-            if (bokehServerActive) {
-                bokehServerActive = false;
-                iframe.style.display = 'none';
-                fallback.style.display = 'flex';
-            }
-        }
-    }
-
-    function logSelectedFiles() {
-        console.log("Currently selected files:");
-        selectedFiles.forEach((state, fileName) => {
-            console.log(`File: ${fileName}, Visible: ${state.visible}, Comments: ${state.comments}`);
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        checkBokehServer();
-        setInterval(checkBokehServer, CHECK_INTERVAL);
-    });
-
-    document.getElementById("upload-button").addEventListener("click", async () => {
-        try {
-            const directoryHandle = await window.showDirectoryPicker();
-            document.getElementById("file-tree").innerHTML = "";
-            await buildFileTree(directoryHandle, document.getElementById("file-tree"), "");
-        } catch (error) {
-            console.error("Error accessing directory:", error);
-        }
-    });
-
-    async function buildFileTree(directoryHandle, container, prefix) {
-        const entries = [];
-        for await (const entry of directoryHandle.values()) {
-            if (entry.kind === "directory" || (entry.kind === "file" && entry.name.toLowerCase().endsWith('.txt'))) {
-                entries.push(entry);
-            }
-        }
-
-        entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
-
-        entries.forEach((entry, index) => {
-            const isLast = index === entries.length - 1;
-            const newPrefix = prefix + (isLast ? "    " : "│   ");
-
-            if (entry.kind === "directory") {
-                const folderDiv = document.createElement("div");
-                folderDiv.classList.add("folder");
-                folderDiv.innerHTML = `<span>${prefix ? "│   " : ""}${isLast ? "└── " : "├── "}${entry.name}</span>`;
-                container.appendChild(folderDiv);
-
-                const subContainer = document.createElement("div");
-                subContainer.style.display = "none";
-                container.appendChild(subContainer);
-
-                folderDiv.addEventListener("click", (event) => {
-                    event.stopPropagation();
-                    subContainer.style.display = subContainer.style.display === "none" ? "block" : "none";
+            try {
+                const response = await fetch(bokehUrl, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    cache: 'no-store'
                 });
 
-                buildFileTree(entry, subContainer, newPrefix);
-            } else if (entry.kind === "file") {
-                const fileDiv = document.createElement("div");
-                fileDiv.classList.add("file");
-
-                const fileNameSpan = document.createElement("span");
-                fileNameSpan.classList.add("file-name");
-                fileNameSpan.textContent = `${prefix}${isLast ? "└── " : "├── "}${entry.name}`;
-
-                const actionsDiv = document.createElement("div");
-                actionsDiv.classList.add("file-actions");
-
-                const visibilityContainer = document.createElement("div");
-                visibilityContainer.classList.add("action-icon");
-                visibilityContainer.title = "Toggle Visibility";
-                visibilityContainer.innerHTML = `
-                    <svg class="view-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
-                        <image href="svg-icons/view-open.svg" width="24" height="24"/>
-                    </svg>
-                    <svg class="view-closed hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
-                        <image href="svg-icons/view-closed.svg" width="24" height="24"/>
-                    </svg>
-                `;
-
-                const commentsContainer = document.createElement("div");
-                commentsContainer.classList.add("action-icon");
-                commentsContainer.title = "Toggle Comments";
-                commentsContainer.innerHTML = `
-                    <svg class="comment-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <image href="svg-icons/comment-closed.svg" width="24" height="24"/>
-                    </svg>
-                    <svg class="comment-opened hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-
-                const fileState = {
-                    visible: true,
-                    comments: false,
-                    element: fileDiv
-                };
-
-                visibilityContainer.addEventListener("click", (e) => {
-                    if (!fileDiv.classList.contains("selected")) return;
-                    e.stopPropagation();
-                    const viewOpen = visibilityContainer.querySelector('.view-open');
-                    const viewClosed = visibilityContainer.querySelector('.view-closed');
-                    viewOpen.classList.toggle('hidden');
-                    viewClosed.classList.toggle('hidden');
-                    visibilityContainer.classList.toggle('active');
-                    fileState.visible = !fileState.visible;
-                    logSelectedFiles();
-                });
-
-                commentsContainer.addEventListener("click", (e) => {
-                    if (!fileDiv.classList.contains("selected")) return;
-                    e.stopPropagation();
-                    const commentClosed = commentsContainer.querySelector('.comment-closed');
-                    const commentOpened = commentsContainer.querySelector('.comment-opened');
-                    commentClosed.classList.toggle('hidden');
-                    commentOpened.classList.toggle('hidden');
-                    commentsContainer.classList.toggle('active');
-                    fileState.comments = !fileState.comments;
-                    logSelectedFiles();
-                });
-
-                actionsDiv.appendChild(visibilityContainer);
-                actionsDiv.appendChild(commentsContainer);
-
-                fileDiv.appendChild(fileNameSpan);
-                fileDiv.appendChild(actionsDiv);
-
-                fileDiv.addEventListener("click", (event) => {
-                    if (event.target === fileDiv || event.target === fileNameSpan) {
-                        fileDiv.classList.toggle("selected");
-                        if (fileDiv.classList.contains("selected")) {
-                            selectedFiles.set(entry.name, fileState);
-                        } else {
-                            selectedFiles.delete(entry.name);
-                        }
-                        logSelectedFiles();
+                if (!bokehServerActive) {
+                    bokehServerActive = true;
+                    if (iframe.src !== bokehUrl) {
+                        iframe.src = bokehUrl;
                     }
+                    iframe.style.display = 'block';
+                    fallback.style.display = 'none';
+                }
+            } catch (error) {
+                if (bokehServerActive) {
+                    bokehServerActive = false;
+                    iframe.style.display = 'none';
+                    fallback.style.display = 'flex';
+                }
+            }
+        }
+
+        async function sendSelectedFilesToBackend() {
+            // Prepare the data to send
+            const data = {
+                selectedFiles: Array.from(selectedFiles.entries()).map(([fileName, state]) => ({
+                    fileName,
+                    visible: state.visible,
+                    comments: state.comments
+                }))
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/update-selected-files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
                 });
 
-                container.appendChild(fileDiv);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                console.log('Successfully sent selected files to backend');
+            } catch (error) {
+                console.error('Error sending selected files to backend:', error);
+            }
+        }
+
+        function logSelectedFiles() {
+            console.log("Currently selected files:");
+            selectedFiles.forEach((state, fileName) => {
+                console.log(`File: ${fileName}, Visible: ${state.visible}, Comments: ${state.comments}`);
+            });
+            sendSelectedFilesToBackend(); // Send to Python backend
+        }
+
+        async function tryOpenRunDataFolder() {
+            try {
+                // First get the app directory handle
+                const appDirHandle = await window.showDirectoryPicker();
+
+                // Try to get the parent (root) directory
+                let rootDirHandle;
+                try {
+                    rootDirHandle = await appDirHandle.getDirectoryHandle('..');
+                } catch (error) {
+                    console.log("Couldn't access parent directory:", error);
+                    return null;
+                }
+
+                // Try to get the data directory
+                let dataDirHandle;
+                try {
+                    dataDirHandle = await rootDirHandle.getDirectoryHandle('data');
+                } catch (error) {
+                    console.log("Couldn't access data directory:", error);
+                    return null;
+                }
+
+                // Try to get the run_data directory
+                try {
+                    return await dataDirHandle.getDirectoryHandle('run_data');
+                } catch (error) {
+                    console.log("Couldn't access run_data directory:", error);
+                    return null;
+                }
+            } catch (error) {
+                console.log("Initial directory access failed:", error);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            checkBokehServer();
+            setInterval(checkBokehServer, CHECK_INTERVAL);
+
+            // Try to open run_data folder automatically
+            try {
+                const runDataHandle = await tryOpenRunDataFolder();
+                if (runDataHandle) {
+                    document.getElementById("file-tree").innerHTML = "";
+                    await buildFileTree(runDataHandle, document.getElementById("file-tree"), "");
+                } else {
+                    console.log("run_data folder not found or access denied, proceeding with normal behavior");
+                    // Proceed with normal behavior
+                }
+            } catch (error) {
+                console.log("Error trying to access run_data folder:", error);
+                // Proceed with normal behavior
             }
         });
-    }
-</script>
+
+        document.getElementById("upload-button").addEventListener("click", async () => {
+            try {
+                const directoryHandle = await window.showDirectoryPicker();
+                document.getElementById("file-tree").innerHTML = "";
+                await buildFileTree(directoryHandle, document.getElementById("file-tree"), "");
+            } catch (error) {
+                console.error("Error accessing directory:", error);
+            }
+        });
+
+        async function buildFileTree(directoryHandle, container, prefix = "") {
+            const entries = [];
+            for await (const entry of directoryHandle.values()) {
+                if (entry.kind === "directory" || (entry.kind === "file" && entry.name.toLowerCase().endsWith('.txt'))) {
+                    entries.push(entry);
+                }
+            }
+
+            entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+
+            entries.forEach((entry, index) => {
+                const isLast = index === entries.length - 1;
+                const newPrefix = prefix + (isLast ? "    " : "│   ");
+
+                if (entry.kind === "directory") {
+                    const folderDiv = document.createElement("div");
+                    folderDiv.classList.add("folder");
+
+                    const connector = document.createElement("span");
+                    connector.classList.add("connector");
+
+                    const folderName = document.createElement("span");
+                    folderName.classList.add("folder-name");
+                    folderName.textContent = entry.name;
+
+                    folderDiv.appendChild(connector);
+                    folderDiv.appendChild(folderName);
+                    container.appendChild(folderDiv);
+
+                    const subContainer = document.createElement("div");
+                    subContainer.classList.add("sub-container");
+                    subContainer.style.display = "none";
+                    container.appendChild(subContainer);
+
+                    folderDiv.addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        const isExpanded = subContainer.style.display === "block";
+                        subContainer.style.display = isExpanded ? "none" : "block";
+                        folderDiv.classList.toggle("expanded", !isExpanded);
+                    });
+
+                    buildFileTree(entry, subContainer, newPrefix);
+                } else if (entry.kind === "file") {
+                    const fileDiv = document.createElement("div");
+                    fileDiv.classList.add("file");
+
+                    const connector = document.createElement("span");
+                    connector.classList.add("connector");
+
+                    const fileNameSpan = document.createElement("span");
+                    fileNameSpan.classList.add("file-name");
+                    fileNameSpan.textContent = entry.name;
+
+                    const actionsDiv = document.createElement("div");
+                    actionsDiv.classList.add("file-actions");
+
+                    const visibilityContainer = document.createElement("div");
+                    visibilityContainer.classList.add("action-icon");
+                    visibilityContainer.title = "Toggle Visibility";
+                    visibilityContainer.innerHTML = `
+                        <svg class="view-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
+                            <image href="svg-icons/view-open.svg" width="24" height="24"/>
+                        </svg>
+                        <svg class="view-closed hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
+                            <image href="svg-icons/view-closed.svg" width="24" height="24"/>
+                        </svg>
+                    `;
+
+                    const commentsContainer = document.createElement("div");
+                    commentsContainer.classList.add("action-icon");
+                    commentsContainer.title = "Toggle Comments";
+                    commentsContainer.innerHTML = `
+                        <svg class="comment-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <image href="svg-icons/comment-closed.svg" width="24" height="24"/>
+                        </svg>
+                        <svg class="comment-opened hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    `;
+
+                    const fileState = {
+                        visible: true,
+                        comments: false,
+                        element: fileDiv
+                    };
+
+                    visibilityContainer.addEventListener("click", (e) => {
+                        if (!fileDiv.classList.contains("selected")) return;
+                        e.stopPropagation();
+                        const viewOpen = visibilityContainer.querySelector('.view-open');
+                        const viewClosed = visibilityContainer.querySelector('.view-closed');
+                        viewOpen.classList.toggle('hidden');
+                        viewClosed.classList.toggle('hidden');
+                        visibilityContainer.classList.toggle('active');
+                        fileState.visible = !fileState.visible;
+                        logSelectedFiles();
+                    });
+
+                    commentsContainer.addEventListener("click", (e) => {
+                        if (!fileDiv.classList.contains("selected")) return;
+                        e.stopPropagation();
+                        const commentClosed = commentsContainer.querySelector('.comment-closed');
+                        const commentOpened = commentsContainer.querySelector('.comment-opened');
+                        commentClosed.classList.toggle('hidden');
+                        commentOpened.classList.toggle('hidden');
+                        commentsContainer.classList.toggle('active');
+                        fileState.comments = !fileState.comments;
+                        logSelectedFiles();
+                    });
+
+                    actionsDiv.appendChild(visibilityContainer);
+                    actionsDiv.appendChild(commentsContainer);
+
+                    fileDiv.appendChild(connector);
+                    fileDiv.appendChild(fileNameSpan);
+                    fileDiv.appendChild(actionsDiv);
+
+                    fileDiv.addEventListener("click", (event) => {
+                        if (event.target === fileDiv || event.target === fileNameSpan || event.target === connector) {
+                            fileDiv.classList.toggle("selected");
+                            if (fileDiv.classList.contains("selected")) {
+                                selectedFiles.set(entry.name, fileState);
+                            } else {
+                                selectedFiles.delete(entry.name);
+                            }
+                            logSelectedFiles();
+                        }
+                    });
+
+                    container.appendChild(fileDiv);
+                }
+            });
+        }
+    </script>
 </body>
 </html>

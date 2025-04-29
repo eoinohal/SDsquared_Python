@@ -1,29 +1,20 @@
 # data_processing.py
-# To dynamically handle 2-10 file comparisons
-# WIP
+#
 
 import os
 from collections import OrderedDict
 from bokeh.palettes import Category10, Category20
-
 from accelerometer_data_processor import process_accelerometer_file
-
-MAX_FILES = 10
-COLORS = Category10[10] if MAX_FILES <= 10 else Category20[20]
+COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd","#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
 
 def load_and_process_data(file_path, bike_data):
-    """Load and process accelerometer data from a file"""
-    try:
-        data = process_accelerometer_file(file_path, bike_data)
-        return data
-    except Exception as e:
-        print(f"Error processing {file_path}: {str(e)}")
-        return None
-
+    # Load and process accelerometer data from a file.
+    data = process_accelerometer_file(file_path, bike_data)
+    return data
 
 def process_bike_data(file_path):
-    """Process bike profile data"""
+    #Process bike profile data into dict of key vals
     values = []
     with open(file_path, 'r') as file:
         for line in file:
@@ -35,41 +26,15 @@ def process_bike_data(file_path):
     return values
 
 
-def validate_data_files(all_data):
-    """Ensure all files have required suspension data"""
-    valid_data = OrderedDict()
-    required_keys = [
-        'xValues', 'yForkValues', 'yShockValues',
-        'forkPeaks', 'forkTroughs', 'shockPeaks', 'shockTroughs'
-    ]
-
-    for file_path, data in all_data.items():
-        if data is None:
-            continue
-        if all(key in data for key in required_keys):
-            valid_data[file_path] = data
-        else:
-            print(f"Warning: {file_path} missing required data keys")
-
-    return valid_data
-
-
-def multi_displacement_values(all_data, component='fork'):
-    """
-    Generate displacement values for N files
-    component: 'fork' or 'shock'
-    """
-    valid_data = validate_data_files(all_data)
-    if not valid_data:
-        return None
-
+def displacement_values(data_dict, component):
+    # Generates dict for displacement graph
     values = {
         "title": f"{component.capitalize()} Displacement Comparison",
-        "timeOfRun": max(data["timeOfRun"] for data in valid_data.values()),
+        "timeOfRun": max(data["timeOfRun"] for data in data_dict.values()),
         "files": []
     }
 
-    for i, (file_path, data) in enumerate(valid_data.items()):
+    for i, (file_path, data) in enumerate(data_dict.items()):
         file_name = os.path.basename(file_path)
         prefix = component.lower()
 
@@ -89,22 +54,14 @@ def multi_displacement_values(all_data, component='fork'):
     return values
 
 
-def multi_regression_values(all_data, component='fork', movement_type='compression'):
-    """
-    Generate regression values for N files
-    component: 'fork' or 'shock'
-    movement_type: 'compression' or 'rebound'
-    """
-    valid_data = validate_data_files(all_data)
-    if not valid_data:
-        return None
-
+def regression_values(data_dict, component='fork', movement_type='compression'):
+    # Generates dict for regression graph
     values = {
         "title": f"{component.capitalize()} {movement_type.capitalize()} Comparison",
         "files": []
     }
 
-    for i, (file_path, data) in enumerate(valid_data.items()):
+    for i, (file_path, data) in enumerate(data_dict.items()):
         file_name = os.path.basename(file_path)
         key_prefix = f"{component.lower()}{movement_type.capitalize()}"
 
@@ -117,114 +74,3 @@ def multi_regression_values(all_data, component='fork', movement_type='compressi
         })
 
     return values
-
-
-def calculate_comparison_stats(all_data):
-    """Generate aggregate statistics for all files"""
-    stats = {
-        'fork': {
-            'avg_compression': [],
-            'avg_rebound': [],
-            'max_displacement': []
-        },
-        'shock': {
-            'avg_compression': [],
-            'avg_rebound': [],
-            'max_displacement': []
-        }
-    }
-
-    for data in all_data.values():
-        if data is None:
-            continue
-
-        # Fork stats
-        if data.get('forkCompressionDisplacement'):
-            stats['fork']['avg_compression'].append(
-                sum(data['forkCompressionDisplacement']) / len(data['forkCompressionDisplacement'])
-            )
-        if data.get('forkReboundDisplacement'):
-            stats['fork']['avg_rebound'].append(
-                sum(data['forkReboundDisplacement']) / len(data['forkReboundDisplacement'])
-            )
-        if data.get('yForkValues'):
-            stats['fork']['max_displacement'].append(max(data['yForkValues']))
-
-        # Shock stats
-        if data.get('shockCompressionDisplacement'):
-            stats['shock']['avg_compression'].append(
-                sum(data['shockCompressionDisplacement']) / len(data['shockCompressionDisplacement'])
-            )
-        if data.get('shockReboundDisplacement'):
-            stats['shock']['avg_rebound'].append(
-                sum(data['shockReboundDisplacement']) / len(data['shockReboundDisplacement'])
-            )
-        if data.get('yShockValues'):
-            stats['shock']['max_displacement'].append(max(data['yShockValues']))
-
-    return stats
-
-
-# Backward compatibility functions
-def fork_displacement_values(data1, data2, file1_name, file2_name):
-    return multi_displacement_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='fork')
-
-
-def shock_displacement_values(data1, data2, file1_name, file2_name):
-    return multi_displacement_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='shock')
-
-
-def fork_compression_values(data1, data2, file1_name, file2_name):
-    return multi_regression_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='fork', movement_type='compression')
-
-
-def fork_rebound_values(data1, data2, file1_name, file2_name):
-    return multi_regression_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='fork', movement_type='rebound')
-
-
-def shock_compression_values(data1, data2, file1_name, file2_name):
-    return multi_regression_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='shock', movement_type='compression')
-
-
-def shock_rebound_values(data1, data2, file1_name, file2_name):
-    return multi_regression_values({
-        file1_name: data1,
-        file2_name: data2
-    }, component='shock', movement_type='rebound')
-
-
-# Single run functions remain unchanged
-def displacement_values(data1, data2, file_name):
-    """Single run displacement values (unchanged)"""
-    return {
-        "title": f"Percentage Displacement Plot: {file_name}",
-    }
-
-
-def compression_values(data, file_name):
-    """Single run compression values (unchanged)"""
-    return {
-        "title": f"Compression Scatter Plot: {file_name}",
-    }
-
-
-def rebound_values(data, file_name):
-    """Single run rebound values (unchanged)"""
-    return {
-        "title": f"Rebound Scatter Plot: {file_name}",
-    }

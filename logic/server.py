@@ -57,19 +57,23 @@ def update_selected_files():
     global bokeh_process
 
     data = request.get_json()
-
     kill_bokeh_server()
 
     selected_files = data.get('selectedFiles', [])
 
+    # Determine the appropriate URL based on number of files
     if len(selected_files) == 0:  # no files
         print('No files selected')
-        return jsonify({"status": "success", "message": "No files selected, no Bokeh server started."})
+        return jsonify({
+            "status": "success",
+            "message": "No files selected, no Bokeh server started.",
+            "bokeh_url": None
+        })
 
     elif len(selected_files) == 1:  # single file
         selected_file = selected_files[0].get('fileName')
         if not selected_file:
-             return jsonify({"status": "error", "message": "Invalid file data received"}), 400
+            return jsonify({"status": "error", "message": "Invalid file data received"}), 400
 
         print('1 file selected:', selected_file)
         try:
@@ -83,22 +87,19 @@ def update_selected_files():
             return jsonify({
                 "status": "success",
                 "message": f"Bokeh server started for single file: {selected_file}",
-                "redirect_url": f"http://localhost:5006/single_run?_t={int(time.time())}" # Cache-busting timestamp
+                "bokeh_url": f"http://localhost:5006/single_run?_t={int(time.time())}"
             })
-        except FileNotFoundError:
-             return jsonify({"status": "error", "message": f"Could not find python interpreter at {sys.executable}"}), 500
         except Exception as e:
-             print(f"Error starting single file Bokeh server: {e}")
-             return jsonify({"status": "error", "message": f"Failed to start Bokeh server: {e}"}), 500
+            print(f"Error starting single file Bokeh server: {e}")
+            return jsonify({"status": "error", "message": f"Failed to start Bokeh server: {e}"}), 500
 
     else:  # multi file
         file_names = ','.join(f.get('fileName') for f in selected_files if f.get('fileName'))
         if not file_names:
-             return jsonify({"status": "error", "message": "No valid file names received for multiple files"}), 400
+            return jsonify({"status": "error", "message": "No valid file names received for multiple files"}), 400
 
         print('Multiple files selected:', file_names)
         try:
-
             bokeh_process = subprocess.Popen(
                 [sys.executable, "-m", "bokeh", "serve", "--show", "multi_runs.py", "--args", file_names],
                 stdout=subprocess.PIPE,
@@ -106,20 +107,14 @@ def update_selected_files():
             )
             print(f"Multi file Bokeh server started with PID: {bokeh_process.pid}")
             time.sleep(1)
-
-
             return jsonify({
                 "status": "success",
                 "message": f"Bokeh server started for multiple files: {file_names}",
-                # Add cache-busting timestamp here too
-                "redirect_url": f"http://localhost:5006/multi_runs?_t={int(time.time())}"
+                "bokeh_url": f"http://localhost:5006/multi_runs?_t={int(time.time())}"
             })
-        except FileNotFoundError:
-             return jsonify({"status": "error", "message": f"Could not find python interpreter at {sys.executable}"}), 500
         except Exception as e:
             print(f"Error starting multi file Bokeh server: {e}")
             return jsonify({"status": "error", "message": f"Failed to start Bokeh server: {e}"}), 500
-
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():

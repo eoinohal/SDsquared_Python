@@ -150,7 +150,6 @@
             background-color: #3a75d5;
         }
 
-        /* Buttons and icons */
         #upload-button {
             margin-bottom: 20px;
             padding: 8px 16px;
@@ -198,57 +197,37 @@
         </div>
         <div id="bokeh-container">
             <iframe id="bokeh-iframe" src="about:blank"></iframe>
-            <div id="fallback-message">Runs will appear here when selected</div>
+            <div id="fallback-message">Select runs to visualize data</div>
         </div>
     </div>
 
     <script>
-        let bokehServerActive = false;
-        let lastCheckTime = 0;
-        const CHECK_INTERVAL = 5000;
         const selectedFiles = new Map();
-
-        async function checkBokehServer() {
-            const now = Date.now();
-            if (now - lastCheckTime < CHECK_INTERVAL) return;
-            lastCheckTime = now;
-
-            const iframe = document.getElementById('bokeh-iframe');
-            const fallback = document.getElementById('fallback-message');
-            const bokehUrl = 'http://localhost:5006/single_run';
-
-            try {
-                const response = await fetch(bokehUrl, {
-                    method: 'HEAD',
-                    mode: 'no-cors',
-                    cache: 'no-store'
-                });
-
-                if (!bokehServerActive) {
-                    bokehServerActive = true;
-                    if (iframe.src !== bokehUrl) {
-                        iframe.src = bokehUrl;
-                    }
-                    iframe.style.display = 'block';
-                    fallback.style.display = 'none';
-                }
-            } catch (error) {
-                if (bokehServerActive) {
-                    bokehServerActive = false;
-                    iframe.style.display = 'none';
-                    fallback.style.display = 'flex';
-                }
-            }
-        }
+        let currentBokehUrl = null;
+        let iframeLoading = false;
 
         async function sendSelectedFilesToBackend() {
+            const container = document.getElementById('bokeh-container');
+            const fallback = document.getElementById('fallback-message');
+            const oldIframe = document.getElementById('bokeh-iframe');
+
+            // Immediately hide the iframe and show loading message
+            oldIframe.style.display = 'none';
+            fallback.textContent = "Loading visualization...";
+            fallback.style.display = 'flex';
+            iframeLoading = true;
+
             // Prepare the data to send
-            const data = {
-                selectedFiles: Array.from(selectedFiles.entries()).map(([fileName, state]) => ({
+            const visibleFiles = Array.from(selectedFiles.entries())
+                .filter(([_, state]) => state.visible)
+                .map(([fileName, state]) => ({
                     fileName,
                     visible: state.visible,
                     comments: state.comments
-                }))
+                }));
+
+            const data = {
+                selectedFiles: visibleFiles
             };
 
             try {
@@ -264,9 +243,49 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                console.log('Successfully sent selected files to backend');
+                const result = await response.json();
+                console.log('Server response:', result);
+
+                // Update the Bokeh iframe if we got a URL back
+                if (result.bokeh_url) {
+                    // Only update if this is still the most recent request
+                    if (iframeLoading) {
+                        currentBokehUrl = result.bokeh_url;
+
+                        // Create a new iframe element to prevent flash of old content
+                        const newIframe = document.createElement('iframe');
+                        newIframe.id = 'bokeh-iframe';
+                        newIframe.src = currentBokehUrl;
+                        newIframe.style.width = '100%';
+                        newIframe.style.height = '100%';
+                        newIframe.style.border = 'none';
+                        newIframe.style.backgroundColor = '#1e1e1e';
+                        newIframe.style.display = 'none';
+
+                        // Replace the old iframe with the new one
+                        container.removeChild(oldIframe);
+                        container.appendChild(newIframe);
+
+                        // When the new iframe loads, show it
+                        newIframe.onload = function() {
+                            newIframe.style.display = 'block';
+                            fallback.style.display = 'none';
+                            iframeLoading = false;
+                        };
+                    }
+                } else {
+                    fallback.textContent = "No visible runs selected";
+                    fallback.style.display = 'flex';
+                    iframeLoading = false;
+                }
+
+                return result;
             } catch (error) {
                 console.error('Error sending selected files to backend:', error);
+                fallback.textContent = "Error loading visualization";
+                fallback.style.display = 'flex';
+                iframeLoading = false;
+                throw error;
             }
         }
 
@@ -275,7 +294,14 @@
             selectedFiles.forEach((state, fileName) => {
                 console.log(`File: ${fileName}, Visible: ${state.visible}, Comments: ${state.comments}`);
             });
-            sendSelectedFilesToBackend(); // Send to Python backend
+
+            sendSelectedFilesToBackend()
+                .then(response => {
+                    console.log('Bokeh server updated:', response.message);
+                })
+                .catch(error => {
+                    console.error('Error updating Bokeh server:', error);
+                });
         }
 
         async function tryOpenRunDataFolder() {
@@ -315,9 +341,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            checkBokehServer();
-            setInterval(checkBokehServer, CHECK_INTERVAL);
-
             // Try to open run_data folder automatically
             try {
                 const runDataHandle = await tryOpenRunDataFolder();
@@ -325,12 +348,10 @@
                     document.getElementById("file-tree").innerHTML = "";
                     await buildFileTree(runDataHandle, document.getElementById("file-tree"), "");
                 } else {
-                    console.log("run_data folder not found or access denied, proceeding with normal behavior");
-                    // Proceed with normal behavior
+                    console.log("run_data folder not found or access denied");
                 }
             } catch (error) {
                 console.log("Error trying to access run_data folder:", error);
-                // Proceed with normal behavior
             }
         });
 

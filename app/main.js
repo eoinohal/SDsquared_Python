@@ -1,9 +1,16 @@
-// main.js
-// Creates electron application and loads data into dashboard
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+
+let pythonProcess;
 
 app.whenReady().then(() => {
+    // Start the Python script
+    const projectRoot = path.resolve(__dirname, '..');
+    const scriptPath = path.join(projectRoot, 'logic', 'multi_runs.py');
+    pythonProcess = spawn('python', [scriptPath], { stdio: 'inherit' });
+
+    // Create the Electron BrowserWindow
     let win = new BrowserWindow({
         width: 1200,
         height: 700,
@@ -17,9 +24,6 @@ app.whenReady().then(() => {
 
     // Loading data into dashboard from data dir
     win.webContents.on('did-finish-load', () => {
-
-        const projectRoot = path.resolve(__dirname, '..');
-
         const runDataPath = path.join(projectRoot, 'data', 'run_data');
         const bikeProfilesPath = path.join(projectRoot, 'data', 'bike_profiles');
 
@@ -35,5 +39,10 @@ app.whenReady().then(() => {
 
 // Shutdown app
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+        if (pythonProcess) {
+            pythonProcess.kill();
+        }
+        app.quit();
+    }
 });

@@ -10,6 +10,9 @@ Uses Bokeh to generate graphs
 
 ## How to run
 
+Run <b>cd app </b>
+
+Then run <b>electron main.js</b> to generate the electron app
 
 ### Dependencies
 
@@ -18,12 +21,8 @@ First time running you will need to download dependencies
 
 ### Frontend
 
-Run <b>cd app </b>
-
-Then run <b>electron main.js</b> to generate the electron app
+Electron application. Using web technologies for the application.
 
 ### Backend
 
-Run <b>cd logic </b>
-
-Then run <b>python server.py</b> to start the backend server
+Python backend. Uses bokeh for graphing.

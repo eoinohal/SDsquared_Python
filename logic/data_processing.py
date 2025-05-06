@@ -1,11 +1,5 @@
-# data_processing.py
-#
-
 import os
-from collections import OrderedDict
-from bokeh.palettes import Category10, Category20
 from accelerometer_data_processor import process_accelerometer_file
-COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd","#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
 # Functions used to process data
 def load_and_process_data(file_path, bike_data):
@@ -49,7 +43,7 @@ def displacement_values(data_dict, component):
             "trough_times": data[f"{prefix}TroughTimes"],
             "troughs": data[f"{prefix}Troughs"],
             "troughs_name": f"{prefix}_troughs_{i + 1}",
-            "color": COLORS[i % len(COLORS)]
+            "color": data['color']
         })
 
     return values
@@ -71,7 +65,7 @@ def regression_values(data_dict, component='fork', movement_type='compression'):
             "displacement": data[f"{key_prefix}Displacement"],
             "regress": data[f"{key_prefix}_regress"],
             "name": f"{component}_{i + 1}: {file_name}",
-            "color": COLORS[i % len(COLORS)]
+            "color": data['color']
         })
 
     return values

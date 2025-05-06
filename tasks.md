@@ -6,7 +6,5 @@ _Will E_
 - Get Pi 0w2 to run some sensible code and output regression values  
 
 **w/c 01.04.25**  
-_Eoin_ 
-- Compare dynamically
-- Communication frontend/backend
+_Eoin_
 - Final frontend changes

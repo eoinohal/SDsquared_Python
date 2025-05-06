@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- File manager -->
     <div id="file-manager">
         <h2>Select Runs</h2>
         <button id="upload-button">Upload Root Directory</button>
@@ -14,6 +15,7 @@
             <div id="file-tree-loading" style="display: none; padding: 10px;">Loading run data...</div>
         </div>
 
+        <!-- Rider profile section -->
         <div id="rider-section" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
              <h2>Select Rider Profile</h2>
              <button id="select-rider-folder-button">Select Rider Folder</button>
@@ -22,10 +24,15 @@
              </div>
         </div>
     </div>
+
+    <div id="divider"></div>
+
+    <!-- Main content -->
     <div id="content-area">
         <div id="dashboard-header">
             <h2>SD² Run Dashboard</h2>
         </div>
+        <!-- Visualization container -->
         <div id="bokeh-container">
             <iframe id="bokeh-iframe" src="about:blank"></iframe>
             <div id="fallback-message" class="hidden">No visible runs selected. Waiting for data...</div>
@@ -33,6 +40,7 @@
     </div>
 
     <script>
+        // Initialize Electron/Node.js modules if available
         let ipcRenderer, fs, pathModule;
         if (typeof require !== 'undefined') {
             ipcRenderer = require('electron').ipcRenderer;
@@ -40,12 +48,24 @@
             pathModule = require('path');
         }
 
+        // Global state variables
         let allRuns = {};
         let selectedRiderFileName = null;
-        let bokehIframeLoaded = false;
         const BOKEH_URL = "http://localhost:5006/multi_runs";
         let rootRunDataPath = '';
 
+        // DOM element references
+        const fileManager = document.getElementById('file-manager');
+        const divider = document.getElementById('divider');
+        const contentArea = document.getElementById('content-area');
+
+        // Panel resizing configuration
+        let isResizing = false;
+        let lastX = 0;
+        const MIN_FILE_MANAGER_WIDTH = 200;
+        const MIN_CONTENT_AREA_WIDTH = 400;
+
+        // Updates the Bokeh visualization based on selected runs and rider profile
         async function updateVisualization() {
             const iframe = document.getElementById('bokeh-iframe');
             const fallback = document.getElementById('fallback-message');
@@ -55,7 +75,6 @@
 
             if (visibleFiles.length === 0 || !selectedRiderFileName) {
                 iframe.classList.add('hidden');
-                if (bokehIframeLoaded) iframe.src = "about:blank";
                 fallback.classList.remove('hidden');
                 fallback.textContent = !selectedRiderFileName
                     ? "Please select a rider profile."
@@ -66,47 +85,33 @@
             fallback.classList.add('hidden');
             iframe.classList.remove('hidden');
 
-            try {
-                const payload = {
-                    runs: allRuns,
-                    riderFile: selectedRiderFileName
-                };
-                console.log("Sending payload to Bokeh server:", JSON.stringify(payload, null, 2));
+            iframe.src = BOKEH_URL + "?" + Date.now();
 
-                const BOKEH_APP_PATH = "/multi_runs";
-                const response = await fetch(`http://localhost:5006${BOKEH_APP_PATH}/update-selected-files`, {
+            await new Promise(resolve => {
+                iframe.onload = resolve;
+            });
+
+            try {
+                const response = await fetch(`${BOKEH_URL}/update-selected-files`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload),
-                    mode: 'cors'
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        runs: allRuns,
+                        riderFile: selectedRiderFileName
+                    })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} when updating selected files.`);
-                }
-
-                const data = await response.json();
-                console.log('Update to Bokeh server successful:', data);
-
-                if (iframe.src !== BOKEH_URL || !bokehIframeLoaded) {
-                    console.log("Setting/Reloading Bokeh iframe src:", BOKEH_URL);
-                    iframe.src = BOKEH_URL;
-                    bokehIframeLoaded = true;
-                } else {
-                    console.log("Bokeh iframe already loaded, update handled by POST.");
+                    throw new Error(`Server error: ${response.status}`);
                 }
             } catch (error) {
-                console.error('Error during updateVisualization or connecting to Bokeh:', error);
-                fallback.textContent = `Error connecting to visualization server: ${error.message}`;
-                fallback.classList.remove('hidden');
-                iframe.classList.add('hidden');
-                if (bokehIframeLoaded) iframe.src = "about:blank";
+                console.error('Error sending update:', error);
             }
         }
 
+        /**
+         * Reads directory entries from a given path
+         */
         async function getDirectoryEntriesFromPathAsync(dirPath) {
             if (!fs || !pathModule) return [];
             try {
@@ -129,6 +134,9 @@
             }
         }
 
+        /**
+         * Loads run data from a directory path
+         */
         async function loadRunDirectoryFromPath(dirPath) {
             rootRunDataPath = dirPath;
             const fileTreeLoading = document.getElementById('file-tree-loading');
@@ -152,6 +160,9 @@
             fileTreeLoading.style.display = 'none';
         }
 
+        /**
+         * Loads rider profiles from a directory path
+         */
         async function loadRiderProfilesFromPath(dirPath) {
             const riderListDiv = document.getElementById("rider-list");
             const riderSelectButton = document.getElementById("select-rider-folder-button");
@@ -199,7 +210,9 @@
             riderListLoading.style.display = 'none';
         }
 
-        // Manual selection via File System Access API
+        /**
+         * Handles directory selection via file picker
+         */
         async function loadDirectory(directoryHandle) {
             rootRunDataPath = directoryHandle.name;
 
@@ -210,6 +223,9 @@
             updateVisualization();
         }
 
+        /**
+         * Builds file tree structure from directory handle
+         */
         async function buildFileTreeWithHandle(directoryHandle, container, currentRelativePath) {
             const fragment = document.createDocumentFragment();
             const entries = [];
@@ -226,15 +242,12 @@
                 const itemElement = document.createElement("div");
                 itemElement.classList.add(isDirectory ? "folder" : "file");
 
-                // Display name is just entry.name
                 const nameElement = document.createElement("span");
                 nameElement.classList.add(isDirectory ? "folder-name" : "file-name");
                 nameElement.textContent = entry.name;
                 itemElement.appendChild(nameElement);
 
-                // Construct the full relative path for identification
                 const fileKey = pathModule ? pathModule.join(currentRelativePath, entry.name) : `${currentRelativePath}${currentRelativePath ? '/' : ''}${entry.name}`;
-
 
                 if (isDirectory) {
                     const subContainer = document.createElement("div");
@@ -247,10 +260,9 @@
                              subContainer.style.display = subContainer.style.display === "block" ? "none" : "block";
                         }
                     });
-                    // Pass the updated relative path for children
                     await buildFileTreeWithHandle(entry, subContainer, fileKey);
                 } else {
-                    itemElement.dataset.fileName = fileKey; // Store relative path
+                    itemElement.dataset.fileName = fileKey;
                     const actionsDiv = document.createElement("div");
                     actionsDiv.classList.add("file-actions");
                     const commentsToggle = document.createElement("div");
@@ -264,7 +276,7 @@
                             <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     `;
-                    allRuns[fileKey] = { visible: false, comments: false }; // Use relative path as key
+                    allRuns[fileKey] = { visible: false, comments: false };
                     commentsToggle.addEventListener("click", (e) => {
                         e.stopPropagation();
                         if (itemElement.classList.contains("selected")) {
@@ -295,6 +307,9 @@
             container.appendChild(fragment);
         }
 
+        /**
+         * Builds file tree structure from file entries
+         */
         async function buildFileTreeFromEntries(entries, container, currentRelativePath) {
             const fragment = document.createDocumentFragment();
             entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
@@ -372,6 +387,7 @@
             container.appendChild(fragment);
         }
 
+        // Event listeners for UI buttons
         document.getElementById("upload-button").addEventListener("click", async () => {
             if (typeof window.showDirectoryPicker !== 'function') {
                 alert('Manual directory selection is not supported in this environment. Please ensure paths are auto-loaded.');
@@ -385,6 +401,7 @@
                 else { console.log("Directory selection cancelled."); }
             }
         });
+
         document.getElementById("select-rider-folder-button").addEventListener("click", async () => {
              if (typeof window.showDirectoryPicker !== 'function') {
                  alert('Manual directory selection is not supported in this environment. Please ensure paths are auto-loaded.');
@@ -438,6 +455,44 @@
             }
         });
 
+        // Panel resizing functionality
+        divider.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            lastX = e.clientX;
+            document.body.classList.add('resizing');
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            e.preventDefault();
+        });
+
+        function handleMouseMove(e) {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - lastX;
+            const fileManagerWidth = fileManager.offsetWidth;
+            const contentAreaWidth = contentArea.offsetWidth;
+            const totalWidth = fileManagerWidth + divider.offsetWidth + contentAreaWidth;
+
+            let newFileManagerWidth = fileManagerWidth + deltaX;
+
+            newFileManagerWidth = Math.max(MIN_FILE_MANAGER_WIDTH, newFileManagerWidth);
+            const newContentAreaWidth = totalWidth - newFileManagerWidth - divider.offsetWidth;
+            if (newContentAreaWidth < MIN_CONTENT_AREA_WIDTH) {
+                 newFileManagerWidth = totalWidth - MIN_CONTENT_AREA_WIDTH - divider.offsetWidth;
+            }
+
+            fileManager.style.width = `${newFileManagerWidth}px`;
+            lastX = e.clientX;
+        }
+
+        function handleMouseUp() {
+            isResizing = false;
+            document.body.classList.remove('resizing');
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        // Initialize with Electron IPC or fallback
         if (ipcRenderer) {
             document.getElementById('fallback-message').textContent = "Loading data...";
             document.getElementById('fallback-message').classList.remove('hidden');
@@ -465,7 +520,6 @@
         } else {
             updateVisualization();
         }
-
     </script>
 </body>
 </html>

@@ -189,8 +189,8 @@ class VisualizationUpdater:
             all_disps = [d for f in values["files"] for d in f["displacement"] if f["displacement"]]
 
             if all_speeds and all_disps:
-                plot.x_range = Range1d(start=0, end=max(all_speeds) * 1.1)
-                plot.y_range = Range1d(start=0, end=max(all_disps) * 1.1)
+                plot.x_range = Range1d(start=0, end=sorted(all_speeds)[int(len(all_speeds)*0.9)] * 1.75)
+                plot.y_range = Range1d(start=0, end=sorted(all_disps)[int(len(all_disps)*0.9)] * 1.75)
 
         # Plot data
         for file_data in values["files"]:

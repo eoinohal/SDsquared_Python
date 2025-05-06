@@ -6,22 +6,24 @@ Fronted with usual web technologies (HTML/CSS/JavaScript)
 
 Backend with Python 
 
-Uses Bokeh to generage graphs
+Uses Bokeh to generate graphs
 
 ## How to run
 
+
+### Dependencies
+
+First time running you will need to download dependencies
+
+
 ### Frontend
 
-Run:
+Run <b>cd app </b>
 
-<b>cd app </b> Frontend contained in app
-
-<b>electron main.js</b>
+Then run <b>electron main.js</b> to generate the electron app
 
 ### Backend
 
-<b>cd logic </b> Backend contained in logic
+Run <b>cd logic </b>
 
-<b>python -m bokeh serve single_run.py</b>
-
-## Dependecies
+Then run <b>python server.py</b> to start the backend server

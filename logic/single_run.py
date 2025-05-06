@@ -8,7 +8,7 @@ import sys
 if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
     current_data_file = "../data/run_data/"+str(sys.argv[1])
 else:
-    current_data_file = "../data/run_data/RUN1.txt"
+    current_data_file = "../data/run_data/RUN1.TXT"
 current_bike_file = "../data/bike_profiles/wills_megatower.txt"
 
 

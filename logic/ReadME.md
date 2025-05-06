@@ -1,14 +1,15 @@
 # Backend 
-## Command to start the base system:
+
+In logic dir
+
+### Start server:
+python server.py
+
+### Command to start the single run system:
 python -m bokeh serve --show single_run.py
 
-## Command to start the comparison system:
-python -m bokeh serve --show compare.py
+### Command to start the multi run system:
+python -m bokeh serve --show multi_runs.py
 
-## Command to stop the server
+### Command to stop servers
 CTRL+C
-
-## Running with frontend:
-Use to generate without opening in window:
-
-python -m bokeh serve single_run.py

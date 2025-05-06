@@ -4,192 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SD² Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #121212;
-            color: #e0e0e0;
-            display: flex;
-            height: 100vh;
-        }
-        #file-manager {
-            width: 20%;
-            height: 100%;
-            overflow-y: auto;
-            padding: 20px;
-            box-sizing: border-box;
-            border-right: 1px solid #333;
-        }
-        #content-area {
-            width: 80%;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-        #dashboard-header {
-            margin-bottom: 20px;
-        }
-        #bokeh-container {
-            flex-grow: 1;
-            position: relative;
-        }
-        #bokeh-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background-color: #1e1e1e;
-            display: none;
-        }
-        #fallback-message {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
-            background-color: #1e1e1e;
-        }
-
-        .folder, .file {
-            position: relative;
-            padding: 5px 5px 5px 30px;
-            cursor: pointer;
-            border-bottom: 1px solid #333;
-            display: flex;
-            align-items: center;
-            user-select: none;
-        }
-
-        .folder::before {
-            content: "+";
-            position: absolute;
-            left: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 12px;
-            height: 12px;
-            line-height: 12px;
-            text-align: center;
-            font-size: 12px;
-            color: #e0e0e0;
-            background-color: #555;
-            border-radius: 2px;
-            font-weight: bold;
-            z-index: 2;
-        }
-
-        .folder.expanded::before {
-            content: "-";
-        }
-
-        .folder::after, .file::after {
-            content: "";
-            position: absolute;
-            left: 18px;
-            top: 0;
-            bottom: 0;
-            width: 1px;
-            background-color: #666;
-        }
-
-        .folder .connector::before, .file .connector::before {
-            content: "";
-            position: absolute;
-            left: 18px;
-            top: 50%;
-            width: 10px;
-            height: 1px;
-            background-color: #666;
-            z-index: 1;
-        }
-
-        .folder:last-child::after, .file:last-child::after {
-            bottom: 50%;
-        }
-
-        .folder:hover, .file:hover {
-            background-color: #2a2a2a;
-        }
-
-        .sub-container {
-            margin-left: 20px;
-        }
-
-        .connector {
-            position: absolute;
-            left: 0;
-            width: 28px;
-            height: 100%;
-        }
-
-        .folder > span:not(.connector),
-        .file > span:not(.connector) {
-            margin-left: 10px;
-        }
-
-        .file-name {
-            flex-grow: 1;
-        }
-        .file-actions {
-            display: none;
-            margin-left: 10px;
-        }
-        .selected .file-actions {
-            display: flex;
-        }
-        .selected {
-            background-color: #3a75d5;
-        }
-        .file.selected {
-            background-color: #3a75d5;
-        }
-
-        #upload-button {
-            margin-bottom: 20px;
-            padding: 8px 16px;
-            background-color: #1e1e1e;
-            color: #e0e0e0;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-        }
-        #upload-button:hover {
-            background-color: #555;
-        }
-        .action-icon {
-            margin-left: 8px;
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-        }
-        .action-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: #e0e0e0;
-        }
-        .action-icon:hover svg {
-            fill: #ffffff;
-        }
-        .action-icon.active svg {
-            fill: #3a75d5;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="file-manager">
         <h2>Select Runs</h2>
         <button id="upload-button">Upload Root Directory</button>
-        <div id="file-tree"></div>
+        <div id="file-tree">
+            <div id="file-tree-loading" style="display: none; padding: 10px;">Loading run data...</div>
+        </div>
+
+        <div id="rider-section" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
+             <h2>Select Rider Profile</h2>
+             <button id="select-rider-folder-button">Select Rider Folder</button>
+             <div id="rider-list" style="margin-top: 10px; display: none;">
+                 <div id="rider-list-loading" style="display: none; padding: 10px;">Loading rider profiles...</div>
+             </div>
+        </div>
     </div>
     <div id="content-area">
         <div id="dashboard-header">
@@ -197,307 +28,444 @@
         </div>
         <div id="bokeh-container">
             <iframe id="bokeh-iframe" src="about:blank"></iframe>
-            <div id="fallback-message">Select runs to visualize data</div>
+            <div id="fallback-message" class="hidden">No visible runs selected. Waiting for data...</div>
         </div>
     </div>
 
     <script>
-        const selectedFiles = new Map();
-        let currentBokehUrl = null;
-        let iframeLoading = false;
+        let ipcRenderer, fs, pathModule;
+        if (typeof require !== 'undefined') {
+            ipcRenderer = require('electron').ipcRenderer;
+            fs = require('fs');
+            pathModule = require('path');
+        }
 
-        async function sendSelectedFilesToBackend() {
-            const container = document.getElementById('bokeh-container');
+        let allRuns = {};
+        let selectedRiderFileName = null;
+        let bokehIframeLoaded = false;
+        const BOKEH_URL = "http://localhost:5006/multi_runs";
+        let rootRunDataPath = '';
+
+        async function updateVisualization() {
+            const iframe = document.getElementById('bokeh-iframe');
             const fallback = document.getElementById('fallback-message');
-            const oldIframe = document.getElementById('bokeh-iframe');
-
-            // Immediately hide the iframe and show loading message
-            oldIframe.style.display = 'none';
-            fallback.textContent = "Loading visualization...";
-            fallback.style.display = 'flex';
-            iframeLoading = true;
-
-            // Prepare the data to send
-            const visibleFiles = Array.from(selectedFiles.entries())
+            const visibleFiles = Object.entries(allRuns)
                 .filter(([_, state]) => state.visible)
-                .map(([fileName, state]) => ({
-                    fileName,
-                    visible: state.visible,
-                    comments: state.comments
-                }));
+                .map(([name]) => name);
 
-            const data = {
-                selectedFiles: visibleFiles
-            };
+            if (visibleFiles.length === 0 || !selectedRiderFileName) {
+                iframe.classList.add('hidden');
+                if (bokehIframeLoaded) iframe.src = "about:blank";
+                fallback.classList.remove('hidden');
+                fallback.textContent = !selectedRiderFileName
+                    ? "Please select a rider profile."
+                    : "No visible runs selected.";
+                return;
+            }
+
+            fallback.classList.add('hidden');
+            iframe.classList.remove('hidden');
 
             try {
-                const response = await fetch('http://localhost:5000/update-selected-files', {
+                const payload = {
+                    runs: allRuns,
+                    riderFile: selectedRiderFileName
+                };
+                console.log("Sending payload to Bokeh server:", JSON.stringify(payload, null, 2));
+
+                const BOKEH_APP_PATH = "/multi_runs";
+                const response = await fetch(`http://localhost:5006${BOKEH_APP_PATH}/update-selected-files`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(payload),
+                    mode: 'cors'
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status} when updating selected files.`);
                 }
 
-                const result = await response.json();
-                console.log('Server response:', result);
+                const data = await response.json();
+                console.log('Update to Bokeh server successful:', data);
 
-                // Update the Bokeh iframe if we got a URL back
-                if (result.bokeh_url) {
-                    // Only update if this is still the most recent request
-                    if (iframeLoading) {
-                        currentBokehUrl = result.bokeh_url;
-
-                        // Create a new iframe element to prevent flash of old content
-                        const newIframe = document.createElement('iframe');
-                        newIframe.id = 'bokeh-iframe';
-                        newIframe.src = currentBokehUrl;
-                        newIframe.style.width = '100%';
-                        newIframe.style.height = '100%';
-                        newIframe.style.border = 'none';
-                        newIframe.style.backgroundColor = '#1e1e1e';
-                        newIframe.style.display = 'none';
-
-                        // Replace the old iframe with the new one
-                        container.removeChild(oldIframe);
-                        container.appendChild(newIframe);
-
-                        // When the new iframe loads, show it
-                        newIframe.onload = function() {
-                            newIframe.style.display = 'block';
-                            fallback.style.display = 'none';
-                            iframeLoading = false;
-                        };
-                    }
+                if (iframe.src !== BOKEH_URL || !bokehIframeLoaded) {
+                    console.log("Setting/Reloading Bokeh iframe src:", BOKEH_URL);
+                    iframe.src = BOKEH_URL;
+                    bokehIframeLoaded = true;
                 } else {
-                    fallback.textContent = "No visible runs selected";
-                    fallback.style.display = 'flex';
-                    iframeLoading = false;
+                    console.log("Bokeh iframe already loaded, update handled by POST.");
                 }
-
-                return result;
             } catch (error) {
-                console.error('Error sending selected files to backend:', error);
-                fallback.textContent = "Error loading visualization";
-                fallback.style.display = 'flex';
-                iframeLoading = false;
-                throw error;
+                console.error('Error during updateVisualization or connecting to Bokeh:', error);
+                fallback.textContent = `Error connecting to visualization server: ${error.message}`;
+                fallback.classList.remove('hidden');
+                iframe.classList.add('hidden');
+                if (bokehIframeLoaded) iframe.src = "about:blank";
             }
         }
 
-        function logSelectedFiles() {
-            console.log("Currently selected files:");
-            selectedFiles.forEach((state, fileName) => {
-                console.log(`File: ${fileName}, Visible: ${state.visible}, Comments: ${state.comments}`);
-            });
-
-            sendSelectedFilesToBackend()
-                .then(response => {
-                    console.log('Bokeh server updated:', response.message);
-                })
-                .catch(error => {
-                    console.error('Error updating Bokeh server:', error);
+        async function getDirectoryEntriesFromPathAsync(dirPath) {
+            if (!fs || !pathModule) return [];
+            try {
+                const dirStats = await fs.promises.stat(dirPath);
+                if (!dirStats.isDirectory()) { console.warn(`Path is not a directory: ${dirPath}`); return []; }
+                const itemNames = await fs.promises.readdir(dirPath);
+                const entryPromises = itemNames.map(async (itemName) => {
+                    const itemPath = pathModule.join(dirPath, itemName);
+                    try {
+                        const stats = await fs.promises.stat(itemPath);
+                        return { name: itemName, kind: stats.isDirectory() ? 'directory' : 'file', path: itemPath };
+                    } catch (error) { return null; }
                 });
-        }
-
-        async function tryOpenRunDataFolder() {
-            try {
-                // First get the app directory handle
-                const appDirHandle = await window.showDirectoryPicker();
-
-                // Try to get the parent (root) directory
-                let rootDirHandle;
-                try {
-                    rootDirHandle = await appDirHandle.getDirectoryHandle('..');
-                } catch (error) {
-                    console.log("Couldn't access parent directory:", error);
-                    return null;
-                }
-
-                // Try to get the data directory
-                let dataDirHandle;
-                try {
-                    dataDirHandle = await rootDirHandle.getDirectoryHandle('data');
-                } catch (error) {
-                    console.log("Couldn't access data directory:", error);
-                    return null;
-                }
-
-                // Try to get the run_data directory
-                try {
-                    return await dataDirHandle.getDirectoryHandle('run_data');
-                } catch (error) {
-                    console.log("Couldn't access run_data directory:", error);
-                    return null;
-                }
+                const entries = await Promise.all(entryPromises);
+                return entries.filter(entry => entry !== null);
             } catch (error) {
-                console.log("Initial directory access failed:", error);
-                return null;
+                if (error.code === 'ENOENT') { console.warn(`Directory does not exist: ${dirPath}`); }
+                else { console.error(`Error reading directory at ${dirPath}:`, error); }
+                return [];
             }
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Try to open run_data folder automatically
-            try {
-                const runDataHandle = await tryOpenRunDataFolder();
-                if (runDataHandle) {
-                    document.getElementById("file-tree").innerHTML = "";
-                    await buildFileTree(runDataHandle, document.getElementById("file-tree"), "");
-                } else {
-                    console.log("run_data folder not found or access denied");
-                }
-            } catch (error) {
-                console.log("Error trying to access run_data folder:", error);
-            }
-        });
+        async function loadRunDirectoryFromPath(dirPath) {
+            rootRunDataPath = dirPath;
+            const fileTreeLoading = document.getElementById('file-tree-loading');
+            const fileTreeDiv = document.getElementById('file-tree');
+            fileTreeLoading.style.display = 'block';
+            fileTreeDiv.innerHTML = '';
 
-        document.getElementById("upload-button").addEventListener("click", async () => {
-            try {
-                const directoryHandle = await window.showDirectoryPicker();
-                document.getElementById("file-tree").innerHTML = "";
-                await buildFileTree(directoryHandle, document.getElementById("file-tree"), "");
-            } catch (error) {
-                console.error("Error accessing directory:", error);
-            }
-        });
+            allRuns = {};
+            console.time(`FS Read Run Dir: ${dirPath}`);
+            const entries = await getDirectoryEntriesFromPathAsync(dirPath);
+            console.timeEnd(`FS Read Run Dir: ${dirPath}`);
 
-        async function buildFileTree(directoryHandle, container, prefix = "") {
+            if (entries.length > 0) {
+                console.time(`DOM Build Run Tree: ${dirPath}`);
+                await buildFileTreeFromEntries(entries, fileTreeDiv, "");
+                console.timeEnd(`DOM Build Run Tree: ${dirPath}`);
+                document.getElementById('upload-button').style.display = 'none';
+            } else {
+                 fileTreeDiv.textContent = `Could not load runs or folder empty: ${dirPath}`;
+            }
+            fileTreeLoading.style.display = 'none';
+        }
+
+        async function loadRiderProfilesFromPath(dirPath) {
+            const riderListDiv = document.getElementById("rider-list");
+            const riderSelectButton = document.getElementById("select-rider-folder-button");
+            const riderListLoading = document.getElementById("rider-list-loading");
+            riderListLoading.style.display = 'block';
+            riderListDiv.innerHTML = '';
+            selectedRiderFileName = null;
+            let foundTxtFiles = false;
+            console.time(`FS Read Rider Dir: ${dirPath}`);
+            const entries = await getDirectoryEntriesFromPathAsync(dirPath);
+            console.timeEnd(`FS Read Rider Dir: ${dirPath}`);
+            const txtFiles = entries.filter(entry => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.txt'));
+            const fragment = document.createDocumentFragment();
+            txtFiles.forEach(fileEntry => {
+                foundTxtFiles = true;
+                const riderFileElement = document.createElement("div");
+                riderFileElement.classList.add("file");
+                riderFileElement.textContent = fileEntry.name;
+                riderFileElement.dataset.riderName = fileEntry.name;
+                riderFileElement.style.paddingLeft = "10px";
+                riderFileElement.style.cursor = "pointer";
+                riderFileElement.addEventListener("click", () => {
+                    const clickedName = riderFileElement.dataset.riderName;
+                    const wasSelected = riderFileElement.classList.contains("selected");
+                    riderListDiv.querySelectorAll('.file.selected').forEach(el => {
+                        if (el !== riderFileElement) el.classList.remove("selected");
+                    });
+                    riderFileElement.classList.toggle("selected", !wasSelected);
+                    selectedRiderFileName = (!wasSelected) ? clickedName : null;
+                    updateVisualization();
+                });
+                fragment.appendChild(riderFileElement);
+            });
+            riderListDiv.appendChild(fragment);
+            if (foundTxtFiles) {
+                riderSelectButton.style.display = 'none';
+                riderListDiv.style.display = 'block';
+            } else {
+                const noFilesDiv = document.createElement('div');
+                noFilesDiv.textContent = `No .txt rider profiles found in: ${dirPath}`;
+                riderListDiv.appendChild(noFilesDiv);
+                riderListDiv.style.display = 'block';
+                riderSelectButton.style.display = 'block';
+            }
+            riderListLoading.style.display = 'none';
+        }
+
+        // Manual selection via File System Access API
+        async function loadDirectory(directoryHandle) {
+            rootRunDataPath = directoryHandle.name;
+
+            allRuns = {};
+            document.getElementById('file-tree').innerHTML = "";
+            await buildFileTreeWithHandle(directoryHandle, document.getElementById('file-tree'), "");
+            document.getElementById('upload-button').style.display = 'none';
+            updateVisualization();
+        }
+
+        async function buildFileTreeWithHandle(directoryHandle, container, currentRelativePath) {
+            const fragment = document.createDocumentFragment();
             const entries = [];
             for await (const entry of directoryHandle.values()) {
-                if (entry.kind === "directory" || (entry.kind === "file" && entry.name.toLowerCase().endsWith('.txt'))) {
+                if (entry.kind === "directory" ||
+                   (entry.kind === "file" && entry.name.toLowerCase().endsWith('.txt'))) {
                     entries.push(entry);
                 }
             }
-
             entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
 
-            entries.forEach((entry, index) => {
-                const isLast = index === entries.length - 1;
-                const newPrefix = prefix + (isLast ? "    " : "│   ");
+            for (const entry of entries) {
+                const isDirectory = entry.kind === "directory";
+                const itemElement = document.createElement("div");
+                itemElement.classList.add(isDirectory ? "folder" : "file");
 
-                if (entry.kind === "directory") {
-                    const folderDiv = document.createElement("div");
-                    folderDiv.classList.add("folder");
+                // Display name is just entry.name
+                const nameElement = document.createElement("span");
+                nameElement.classList.add(isDirectory ? "folder-name" : "file-name");
+                nameElement.textContent = entry.name;
+                itemElement.appendChild(nameElement);
 
-                    const connector = document.createElement("span");
-                    connector.classList.add("connector");
+                // Construct the full relative path for identification
+                const fileKey = pathModule ? pathModule.join(currentRelativePath, entry.name) : `${currentRelativePath}${currentRelativePath ? '/' : ''}${entry.name}`;
 
-                    const folderName = document.createElement("span");
-                    folderName.classList.add("folder-name");
-                    folderName.textContent = entry.name;
 
-                    folderDiv.appendChild(connector);
-                    folderDiv.appendChild(folderName);
-                    container.appendChild(folderDiv);
-
+                if (isDirectory) {
                     const subContainer = document.createElement("div");
                     subContainer.classList.add("sub-container");
                     subContainer.style.display = "none";
-                    container.appendChild(subContainer);
-
-                    folderDiv.addEventListener("click", (event) => {
-                        event.stopPropagation();
-                        const isExpanded = subContainer.style.display === "block";
-                        subContainer.style.display = isExpanded ? "none" : "block";
-                        folderDiv.classList.toggle("expanded", !isExpanded);
+                    fragment.appendChild(itemElement);
+                    fragment.appendChild(subContainer);
+                    itemElement.addEventListener("click", (e) => {
+                        if (e.target === itemElement || e.target === nameElement) {
+                             subContainer.style.display = subContainer.style.display === "block" ? "none" : "block";
+                        }
                     });
-
-                    buildFileTree(entry, subContainer, newPrefix);
-                } else if (entry.kind === "file") {
-                    const fileDiv = document.createElement("div");
-                    fileDiv.classList.add("file");
-
-                    const connector = document.createElement("span");
-                    connector.classList.add("connector");
-
-                    const fileNameSpan = document.createElement("span");
-                    fileNameSpan.classList.add("file-name");
-                    fileNameSpan.textContent = entry.name;
-
+                    // Pass the updated relative path for children
+                    await buildFileTreeWithHandle(entry, subContainer, fileKey);
+                } else {
+                    itemElement.dataset.fileName = fileKey; // Store relative path
                     const actionsDiv = document.createElement("div");
                     actionsDiv.classList.add("file-actions");
-
-                    const visibilityContainer = document.createElement("div");
-                    visibilityContainer.classList.add("action-icon");
-                    visibilityContainer.title = "Toggle Visibility";
-                    visibilityContainer.innerHTML = `
-                        <svg class="view-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
-                            <image href="svg-icons/view-open.svg" width="24" height="24"/>
-                        </svg>
-                        <svg class="view-closed hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="#333">
-                            <image href="svg-icons/view-closed.svg" width="24" height="24"/>
-                        </svg>
-                    `;
-
-                    const commentsContainer = document.createElement("div");
-                    commentsContainer.classList.add("action-icon");
-                    commentsContainer.title = "Toggle Comments";
-                    commentsContainer.innerHTML = `
+                    const commentsToggle = document.createElement("div");
+                    commentsToggle.classList.add("action-icon");
+                    commentsToggle.title = "Toggle Comments";
+                    commentsToggle.innerHTML = `
                         <svg class="comment-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                             <image href="svg-icons/comment-closed.svg" width="24" height="24"/>
                         </svg>
                         <svg class="comment-opened hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     `;
-
-                    const fileState = {
-                        visible: true,
-                        comments: false,
-                        element: fileDiv
-                    };
-
-                    visibilityContainer.addEventListener("click", (e) => {
-                        if (!fileDiv.classList.contains("selected")) return;
+                    allRuns[fileKey] = { visible: false, comments: false }; // Use relative path as key
+                    commentsToggle.addEventListener("click", (e) => {
                         e.stopPropagation();
-                        const viewOpen = visibilityContainer.querySelector('.view-open');
-                        const viewClosed = visibilityContainer.querySelector('.view-closed');
-                        viewOpen.classList.toggle('hidden');
-                        viewClosed.classList.toggle('hidden');
-                        visibilityContainer.classList.toggle('active');
-                        fileState.visible = !fileState.visible;
-                        logSelectedFiles();
-                    });
-
-                    commentsContainer.addEventListener("click", (e) => {
-                        if (!fileDiv.classList.contains("selected")) return;
-                        e.stopPropagation();
-                        const commentClosed = commentsContainer.querySelector('.comment-closed');
-                        const commentOpened = commentsContainer.querySelector('.comment-opened');
-                        commentClosed.classList.toggle('hidden');
-                        commentOpened.classList.toggle('hidden');
-                        commentsContainer.classList.toggle('active');
-                        fileState.comments = !fileState.comments;
-                        logSelectedFiles();
-                    });
-
-                    actionsDiv.appendChild(visibilityContainer);
-                    actionsDiv.appendChild(commentsContainer);
-
-                    fileDiv.appendChild(connector);
-                    fileDiv.appendChild(fileNameSpan);
-                    fileDiv.appendChild(actionsDiv);
-
-                    fileDiv.addEventListener("click", (event) => {
-                        if (event.target === fileDiv || event.target === fileNameSpan || event.target === connector) {
-                            fileDiv.classList.toggle("selected");
-                            if (fileDiv.classList.contains("selected")) {
-                                selectedFiles.set(entry.name, fileState);
-                            } else {
-                                selectedFiles.delete(entry.name);
-                            }
-                            logSelectedFiles();
+                        if (itemElement.classList.contains("selected")) {
+                            allRuns[fileKey].comments = !allRuns[fileKey].comments;
+                            commentsToggle.querySelector('.comment-closed').classList.toggle('hidden');
+                            commentsToggle.querySelector('.comment-opened').classList.toggle('hidden');
+                            commentsToggle.classList.toggle('active', allRuns[fileKey].comments);
+                            updateVisualization();
                         }
                     });
+                    actionsDiv.appendChild(commentsToggle);
+                    itemElement.appendChild(actionsDiv);
+                    fragment.appendChild(itemElement);
+                    itemElement.addEventListener("click", (e) => {
+                        if (e.target.closest('.action-icon')) return;
+                        itemElement.classList.toggle("selected");
+                        allRuns[fileKey].visible = itemElement.classList.contains("selected");
+                        if (!allRuns[fileKey].visible) {
+                            allRuns[fileKey].comments = false;
+                            commentsToggle.querySelector('.comment-closed').classList.remove('hidden');
+                            commentsToggle.querySelector('.comment-opened').classList.add('hidden');
+                            commentsToggle.classList.remove('active');
+                        }
+                        updateVisualization();
+                    });
+                }
+            }
+            container.appendChild(fragment);
+        }
 
-                    container.appendChild(fileDiv);
+        async function buildFileTreeFromEntries(entries, container, currentRelativePath) {
+            const fragment = document.createDocumentFragment();
+            entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+
+            for (const entry of entries) {
+                const isDirectory = entry.kind === "directory";
+                const itemElement = document.createElement("div");
+                itemElement.classList.add(isDirectory ? "folder" : "file");
+
+                const nameElement = document.createElement("span");
+                nameElement.classList.add(isDirectory ? "folder-name" : "file-name");
+                nameElement.textContent = entry.name;
+                itemElement.appendChild(nameElement);
+
+                const fileKey = pathModule ? pathModule.join(currentRelativePath, entry.name) : `${currentRelativePath}${currentRelativePath ? '/' : ''}${entry.name}`;
+
+                if (isDirectory) {
+                    const subContainer = document.createElement("div");
+                    subContainer.classList.add("sub-container");
+                    subContainer.style.display = "none";
+                    fragment.appendChild(itemElement);
+                    fragment.appendChild(subContainer);
+                    itemElement.addEventListener("click", (e) => {
+                        if (e.target === itemElement || e.target === nameElement) {
+                            subContainer.style.display = subContainer.style.display === "block" ? "none" : "block";
+                        }
+                    });
+                    const subEntries = await getDirectoryEntriesFromPathAsync(entry.path);
+                    if (subEntries.length > 0) {
+                        await buildFileTreeFromEntries(subEntries, subContainer, fileKey);
+                    }
+                } else {
+                    itemElement.dataset.fileName = fileKey;
+                    const actionsDiv = document.createElement("div");
+                    actionsDiv.classList.add("file-actions");
+                    const commentsToggle = document.createElement("div");
+                    commentsToggle.classList.add("action-icon");
+                    commentsToggle.title = "Toggle Comments";
+                    commentsToggle.innerHTML = `
+                        <svg class="comment-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <image href="svg-icons/comment-closed.svg" width="24" height="24"/>
+                        </svg>
+                        <svg class="comment-opened hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36093 14.891 4 16.1272L3 21L7.8728 20C9.10904 20.6391 10.5124 21 12 21Z" stroke="#e0e0e0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    `;
+                    allRuns[fileKey] = { visible: false, comments: false };
+                    commentsToggle.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        if (itemElement.classList.contains("selected")) {
+                            allRuns[fileKey].comments = !allRuns[fileKey].comments;
+                            commentsToggle.querySelector('.comment-closed').classList.toggle('hidden');
+                            commentsToggle.querySelector('.comment-opened').classList.toggle('hidden');
+                            commentsToggle.classList.toggle('active', allRuns[fileKey].comments);
+                            updateVisualization();
+                        }
+                    });
+                    actionsDiv.appendChild(commentsToggle);
+                    itemElement.appendChild(actionsDiv);
+                    fragment.appendChild(itemElement);
+                    itemElement.addEventListener("click", (e) => {
+                        if (e.target.closest('.action-icon')) return;
+                        itemElement.classList.toggle("selected");
+                        allRuns[fileKey].visible = itemElement.classList.contains("selected");
+                        if (!allRuns[fileKey].visible) {
+                            allRuns[fileKey].comments = false;
+                            commentsToggle.querySelector('.comment-closed').classList.remove('hidden');
+                            commentsToggle.querySelector('.comment-opened').classList.add('hidden');
+                            commentsToggle.classList.remove('active');
+                        }
+                        updateVisualization();
+                    });
+                }
+            }
+            container.appendChild(fragment);
+        }
+
+        document.getElementById("upload-button").addEventListener("click", async () => {
+            if (typeof window.showDirectoryPicker !== 'function') {
+                alert('Manual directory selection is not supported in this environment. Please ensure paths are auto-loaded.');
+                return;
+            }
+            try {
+                const directoryHandle = await window.showDirectoryPicker();
+                await loadDirectory(directoryHandle);
+            } catch (error) {
+                if (error.name !== 'AbortError') { console.error("Directory access error:", error); }
+                else { console.log("Directory selection cancelled."); }
+            }
+        });
+        document.getElementById("select-rider-folder-button").addEventListener("click", async () => {
+             if (typeof window.showDirectoryPicker !== 'function') {
+                 alert('Manual directory selection is not supported in this environment. Please ensure paths are auto-loaded.');
+                return;
+            }
+            try {
+                const directoryHandle = await window.showDirectoryPicker();
+                const riderListDiv = document.getElementById("rider-list");
+                const riderSelectButton = document.getElementById("select-rider-folder-button");
+                riderListDiv.innerHTML = '';
+                selectedRiderFileName = null;
+                let foundTxtFiles = false;
+                const fragment = document.createDocumentFragment();
+                for await (const entry of directoryHandle.values()) {
+                    if (entry.kind === "file" && entry.name.toLowerCase().endsWith('.txt')) {
+                        foundTxtFiles = true;
+                        const riderFileElement = document.createElement("div");
+                        riderFileElement.classList.add("file");
+                        riderFileElement.textContent = entry.name;
+                        riderFileElement.dataset.riderName = entry.name;
+                        riderFileElement.style.paddingLeft = "10px";
+                        riderFileElement.style.cursor = "pointer";
+                        riderFileElement.addEventListener("click", () => {
+                            const clickedName = riderFileElement.dataset.riderName;
+                            const wasSelected = riderFileElement.classList.contains("selected");
+                            riderListDiv.querySelectorAll('.file.selected').forEach(el => {
+                                if (el !== riderFileElement) el.classList.remove("selected");
+                            });
+                            riderFileElement.classList.toggle("selected", !wasSelected);
+                            selectedRiderFileName = (!wasSelected) ? clickedName : null;
+                            updateVisualization();
+                        });
+                        fragment.appendChild(riderFileElement);
+                    }
+                }
+                riderListDiv.appendChild(fragment);
+                if (foundTxtFiles) {
+                    riderSelectButton.style.display = 'none';
+                    riderListDiv.style.display = 'block';
+                } else {
+                    const noFilesDiv = document.createElement('div');
+                    noFilesDiv.textContent = `No .txt rider profiles found in selected folder.`;
+                    riderListDiv.appendChild(noFilesDiv);
+                    riderListDiv.style.display = 'block';
+                    riderSelectButton.style.display = 'block';
+                }
+                updateVisualization();
+            } catch (error) {
+                 if (error.name !== 'AbortError') { console.error("Rider folder selection error:", error); }
+                 else { console.log("Rider folder selection cancelled."); }
+            }
+        });
+
+        if (ipcRenderer) {
+            document.getElementById('fallback-message').textContent = "Loading data...";
+            document.getElementById('fallback-message').classList.remove('hidden');
+            ipcRenderer.on('auto-load-paths', async (event, paths) => {
+                console.log('Received paths for auto-load:', paths);
+                console.time('Total Auto-Load Time');
+                const loadPromises = [];
+                if (paths.runPath) {
+                    loadPromises.push(loadRunDirectoryFromPath(paths.runPath));
+                }
+                if (paths.riderPath) {
+                    loadPromises.push(loadRiderProfilesFromPath(paths.riderPath));
+                }
+                try {
+                    await Promise.all(loadPromises);
+                    console.log("All auto-loading operations complete.");
+                } catch (error) {
+                    console.error("Error during auto-loading operations:", error);
+                    document.getElementById('fallback-message').textContent = "Error loading initial data.";
+                } finally {
+                    console.timeEnd('Total Auto-Load Time');
+                    updateVisualization();
                 }
             });
+        } else {
+            updateVisualization();
         }
+
     </script>
 </body>
 </html>

@@ -7,7 +7,7 @@ from bokeh.palettes import Category10, Category20
 from accelerometer_data_processor import process_accelerometer_file
 COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd","#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
 
-
+# Functions used to process data
 def load_and_process_data(file_path, bike_data):
     # Load and process accelerometer data from a file.
     data = process_accelerometer_file(file_path, bike_data)
@@ -26,6 +26,7 @@ def process_bike_data(file_path):
     return values
 
 
+# Multi run functions
 def displacement_values(data_dict, component):
     # Generates dict for displacement graph
     values = {

@@ -97,10 +97,9 @@ def process_accelerometer_file(file, bike_data):
     xValues = [i * (timeOfRun / lineCount) for i in range(lineCount)]
     shock = get_line_data(xValues, yShockValues)
     fork = get_line_data(xValues, yForkValues)
-    meta_dict = meta_data(comment)
 
     return {
-        "data": ensure_non_empty(meta_dict),
+        "comment": ensure_non_empty(comment),
         "timeOfRun": ensure_non_empty(timeOfRun),
         "xValues": ensure_non_empty(xValues),
         "yForkValues": ensure_non_empty(yForkValues),
@@ -187,17 +186,6 @@ def linear_regression(x, y):
         intercept = float('nan')
 
     return slope, intercept
-
-
-def meta_data(comment):
-    # Contains a dictionary of the key data
-    # Contain all data
-    data = {
-        'comments' : comment,
-    }
-
-    return data
-
 
 def main(file_name):
     result = process_accelerometer_file(file_name)

@@ -1,5 +1,5 @@
 from bokeh.plotting import figure
-from bokeh.models import Range1d, Div
+from bokeh.models import ColumnDataSource, DataTable, TableColumn, Range1d, Div, HTMLTemplateFormatter
 from bokeh.layouts import row, column
 from bokeh.palettes import Category20
 from data_processing import load_and_process_data, process_bike_data, displacement_values, regression_values
@@ -10,6 +10,7 @@ from bokeh.server.server import Server
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from functools import partial
+import statistics
 
 # Path configuration
 run_path_prefix = os.path.normpath("../data/run_data/")
@@ -69,8 +70,7 @@ class VisualizationUpdater:
                 if data:
                     # Collect comments if enabled
                     if props.get("comments", True):
-                        file_meta_data = data['data']
-                        comment = file_meta_data.get('comments', '')
+                        comment = data['comment']
                         if comment:
                             run_name = os.path.basename(run_path)
                             run_comments.append(f"<b>{run_name}:</b> {comment}")
@@ -117,12 +117,15 @@ class VisualizationUpdater:
             # Create the main layout
             layout_components = []
 
+            # Add the plots
+            layout_components.extend([fork_plots, shock_plots])
+
             # Add comments section first if it exists
             if comments_section:
                 layout_components.append(comments_section)
 
-            # Add the rest of the plots
-            layout_components.extend([fork_plots, shock_plots])
+            # Add stats table
+            layout_components.append(self.create_stats_table(processed_data))
 
             layout = column(
                 *layout_components,
@@ -135,6 +138,224 @@ class VisualizationUpdater:
         except Exception as e:
             error_msg = f"Error updating visualization: {str(e)}"
             self.doc.add_root(Div(text=f"<p style='color:red'>{error_msg}</p>"))
+
+    from bokeh.models import HTMLTemplateFormatter
+
+    def create_stats_table(self, processed_data):
+        """Create a table showing key statistics for each run with color coding"""
+        if not processed_data:
+            return Div(text="<p style='color:orange'>No data available for stats table</p>")
+
+        # Prepare the data structure
+        table_data = {
+            'run_name': [],
+            # Fork metrics
+            'fork_compression': [], 'fork_compression_color': [],
+            'fork_compression_speed': [], 'fork_compression_speed_color': [],
+            'fork_rebound': [], 'fork_rebound_color': [],
+            'fork_rebound_speed': [], 'fork_rebound_speed_color': [],
+            'max_fork_disp': [], 'max_fork_disp_color': [],
+            # Shock metrics
+            'shock_compression': [], 'shock_compression_color': [],
+            'shock_compression_speed': [], 'shock_compression_speed_color': [],
+            'shock_rebound': [], 'shock_rebound_color': [],
+            'shock_rebound_speed': [], 'shock_rebound_speed_color': [],
+            'max_shock_disp': [], 'max_shock_disp_color': [],
+            # Time
+            'time_of_run': [], 'time_of_run_color': [],
+        }
+
+        # Lists to store numeric values for mean calculation
+        numeric_data = {
+            # Fork metrics
+            'fork_compression': [],
+            'fork_compression_speed': [],
+            'fork_rebound': [],
+            'fork_rebound_speed': [],
+            'max_fork_disp': [],
+            # Shock metrics
+            'shock_compression': [],
+            'shock_compression_speed': [],
+            'shock_rebound': [],
+            'shock_rebound_speed': [],
+            'max_shock_disp': [],
+            # Time
+            'time_of_run': [],
+        }
+
+        def value_to_color(val, avg, scale=0.3):  # scale controls sensitivity (0.3 = 30% change)
+            """Map value to RGB color: red (low), white (mean), green (high) using percentage change"""
+            if val is None:
+                return "#ffffff"  # white for invalid values
+
+            # Calculate percentage change from mean
+            if avg != 0:
+                pct_change = (val - avg) / avg
+            else:
+                pct_change = 0
+
+            # Normalize to [-scale, scale] range
+            norm_pct = max(-1, min(1, pct_change / scale))
+
+            # Convert to [0, 1] range
+            norm = (norm_pct + 1) / 2
+
+            r = int(255 * (1 - norm))
+            g = int(255 * norm)
+            b = int(50 * (1 - abs(norm - 0.5)))  # Very small blue component
+
+            return f"rgb({r},{g},{b})"
+
+        # First pass: collect all numeric values
+        for run_path, data in processed_data.items():
+            # Fork metrics
+            if data.get('forkCompression_regress'):
+                numeric_data['fork_compression'].append(statistics.median(data['forkCompression_regress']))
+                numeric_data['fork_compression_speed'].append(statistics.median(data['forkCompressionSpeed']))
+
+            if data.get('forkRebound_regress'):
+                numeric_data['fork_rebound'].append(statistics.median(data['forkRebound_regress']))
+                numeric_data['fork_rebound_speed'].append(statistics.median(data['forkReboundSpeed']))
+
+            # Shock metrics
+            if data.get('shockCompression_regress'):
+                numeric_data['shock_compression'].append(statistics.median(data['shockCompression_regress']))
+                numeric_data['shock_compression_speed'].append(statistics.median(data['shockCompressionSpeed']))
+
+            if data.get('shockRebound_regress'):
+                numeric_data['shock_rebound'].append(statistics.median(data['shockRebound_regress']))
+                numeric_data['shock_rebound_speed'].append(statistics.median(data['shockReboundSpeed']))
+
+            # Time and max values
+            numeric_data['time_of_run'].append(data['timeOfRun'])
+            numeric_data['max_fork_disp'].append(max(data['yForkValues']) if data.get('yForkValues') else 0)
+            numeric_data['max_shock_disp'].append(max(data['yShockValues']) if data.get('yShockValues') else 0)
+
+        # Calculate means for each metric
+        stats = {}
+        for key, values in numeric_data.items():
+            stats[key] = {
+                'mean': sum(values) / len(values) if values else 0
+            }
+
+        # Second pass: populate table data with color coding
+        for run_path, data in processed_data.items():
+            run_name = os.path.basename(run_path)
+            table_data['run_name'].append(run_name)
+
+            # Helper function to process each metric
+            def process_metric(metric, value, default="N/A"):
+                if value is not None and value != "N/A":
+                    color = value_to_color(value, stats[metric]['mean'])
+                    table_data[metric].append(f"{value:.2f}" if metric != 'time_of_run' else f"{value:.1f}s")
+                    table_data[f"{metric}_color"].append(color)
+                else:
+                    table_data[metric].append(default)
+                    table_data[f"{metric}_color"].append("#ffffff")
+
+            # Process fork metrics
+            process_metric('fork_compression',
+                           data['forkCompression_regress'][0] if data.get('forkCompression_regress') else None)
+            process_metric('fork_compression_speed',
+                           data['forkCompressionSpeed'][0] if data.get('forkCompressionSpeed') else None)
+            process_metric('fork_rebound', data['forkRebound_regress'][0] if data.get('forkRebound_regress') else None)
+            process_metric('fork_rebound_speed', data['forkReboundSpeed'][0] if data.get('forkReboundSpeed') else None)
+            max_fork = max(data['yForkValues']) if data.get('yForkValues') else 0
+            process_metric('max_fork_disp', max_fork)
+
+            # Process shock metrics
+            process_metric('shock_compression',
+                           data['shockCompression_regress'][0] if data.get('shockCompression_regress') else None)
+            process_metric('shock_compression_speed',
+                           data['shockCompressionSpeed'][0] if data.get('shockCompressionSpeed') else None)
+            process_metric('shock_rebound',
+                           data['shockRebound_regress'][0] if data.get('shockRebound_regress') else None)
+            process_metric('shock_rebound_speed',
+                           data['shockReboundSpeed'][0] if data.get('shockReboundSpeed') else None)
+            max_shock = max(data['yShockValues']) if data.get('yShockValues') else 0
+            process_metric('max_shock_disp', max_shock)
+
+            # Process time
+            process_metric('time_of_run', data['timeOfRun'])
+
+        # Create DataTable columns with color formatters
+        columns = [
+            TableColumn(field="run_name", title="Run Name"),
+        ]
+
+        # Add fork metrics columns
+        fork_columns = [
+            ('fork_compression', 'Fork Compression'),
+            ('fork_compression_speed', 'Fork Comp Speed'),
+            ('fork_rebound', 'Fork Rebound'),
+            ('fork_rebound_speed', 'Fork Reb Speed'),
+            ('max_fork_disp', 'Max Fork Disp')
+        ]
+
+        # Add shock metrics columns
+        shock_columns = [
+            ('shock_compression', 'Shock Compression'),
+            ('shock_compression_speed', 'Shock Comp Speed'),
+            ('shock_rebound', 'Shock Rebound'),
+            ('shock_rebound_speed', 'Shock Reb Speed'),
+            ('max_shock_disp', 'Max Shock Disp')
+        ]
+
+        # Time column
+        time_column = [('time_of_run', 'Duration')]
+
+        # Combine all columns in desired order
+        all_columns = fork_columns + shock_columns + time_column
+
+        for metric, title in all_columns:
+            columns.append(TableColumn(
+                field=metric,
+                title=title,
+                formatter=HTMLTemplateFormatter(
+                    template='<div style="background-color: <%= ' + f'{metric}_color' + ' %>;' +
+                             'padding: 4px; margin: -4px; display: block;">' +
+                             '<%= value %></div>'
+                )
+            ))
+
+        # Custom CSS for the table
+        table_style = """
+        .slick-header-column {
+            color: white !important;
+            background-color: #333 !important;
+            font-size:15px;
+        }
+        .slick-cell {
+            color: black !important;
+            font-size:12px;
+            padding: 0 !important;
+        }
+        .slick-cell div {
+            width: 100%;
+            height: 100%;
+        }
+        .slick-row.last-row {
+            background-color: #e6e6e6 !important;
+            font-weight: bold;
+        }
+        """
+
+        # Create the table
+        source = ColumnDataSource(table_data)
+        table = DataTable(
+            source=source,
+            columns=columns,
+            sizing_mode='stretch_width',
+            autosize_mode='force_fit',
+            css_classes=["custom-table"]
+        )
+
+        # Add the CSS style
+        table.stylesheets.append(table_style)
+
+        stats_div = Div(text="<h2 style='color:white; margin-bottom:10px;'>Run Statistics</h2>")
+        return column(stats_div, table, sizing_mode='stretch_width')
+
 
     def create_displacement_plot(self, data, component='fork'):
         """Create displacement plot for specified component"""

@@ -34,8 +34,8 @@
         </div>
         <!-- Visualization container -->
         <div id="bokeh-container">
-            <iframe id="bokeh-iframe" src="about:blank"></iframe>
-            <div id="fallback-message" class="hidden">No visible runs selected. Waiting for data...</div>
+            <iframe id="bokeh-iframe" src="http://localhost:5006/multi_runs" style="display: none;"></iframe>
+            <div id="fallback-message">Select runs and a rider profile to view data</div>
         </div>
     </div>
 
@@ -58,6 +58,8 @@
         const fileManager = document.getElementById('file-manager');
         const divider = document.getElementById('divider');
         const contentArea = document.getElementById('content-area');
+        const bokehIframe = document.getElementById('bokeh-iframe');
+        const fallbackMessage = document.getElementById('fallback-message');
 
         // Panel resizing configuration
         let isResizing = false;
@@ -65,31 +67,28 @@
         const MIN_FILE_MANAGER_WIDTH = 200;
         const MIN_CONTENT_AREA_WIDTH = 400;
 
+        // Start loading Bokeh server immediately in background
+        bokehIframe.onload = function() {
+            console.log("Bokeh server loaded in background");
+        };
+
         // Updates the Bokeh visualization based on selected runs and rider profile
         async function updateVisualization() {
-            const iframe = document.getElementById('bokeh-iframe');
-            const fallback = document.getElementById('fallback-message');
             const visibleFiles = Object.entries(allRuns)
                 .filter(([_, state]) => state.visible)
                 .map(([name]) => name);
 
             if (visibleFiles.length === 0 || !selectedRiderFileName) {
-                iframe.classList.add('hidden');
-                fallback.classList.remove('hidden');
-                fallback.textContent = !selectedRiderFileName
+                bokehIframe.style.display = 'none';
+                fallbackMessage.style.display = 'block';
+                fallbackMessage.textContent = !selectedRiderFileName
                     ? "Please select a rider profile."
                     : "No visible runs selected.";
                 return;
             }
 
-            fallback.classList.add('hidden');
-            iframe.classList.remove('hidden');
-
-            iframe.src = BOKEH_URL + "?" + Date.now();
-
-            await new Promise(resolve => {
-                iframe.onload = resolve;
-            });
+            fallbackMessage.style.display = 'none';
+            bokehIframe.style.display = 'block';
 
             try {
                 const response = await fetch(`${BOKEH_URL}/update-selected-files`, {
@@ -106,6 +105,9 @@
                 }
             } catch (error) {
                 console.error('Error sending update:', error);
+                fallbackMessage.style.display = 'block';
+                fallbackMessage.textContent = "Error updating visualization";
+                bokehIframe.style.display = 'none';
             }
         }
 
@@ -494,11 +496,8 @@
 
         // Initialize with Electron IPC or fallback
         if (ipcRenderer) {
-            document.getElementById('fallback-message').textContent = "Loading data...";
-            document.getElementById('fallback-message').classList.remove('hidden');
             ipcRenderer.on('auto-load-paths', async (event, paths) => {
                 console.log('Received paths for auto-load:', paths);
-                console.time('Total Auto-Load Time');
                 const loadPromises = [];
                 if (paths.runPath) {
                     loadPromises.push(loadRunDirectoryFromPath(paths.runPath));
@@ -508,17 +507,13 @@
                 }
                 try {
                     await Promise.all(loadPromises);
-                    console.log("All auto-loading operations complete.");
                 } catch (error) {
                     console.error("Error during auto-loading operations:", error);
-                    document.getElementById('fallback-message').textContent = "Error loading initial data.";
+                    fallbackMessage.textContent = "Error loading initial data.";
                 } finally {
-                    console.timeEnd('Total Auto-Load Time');
                     updateVisualization();
                 }
             });
-        } else {
-            updateVisualization();
         }
     </script>
 </body>

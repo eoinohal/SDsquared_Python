@@ -1,4 +1,4 @@
-HSC fully firm, got puncture instantly, shock not working
+HSC fully firm, got puncture instantly, only measuring shock
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 554,593
 -0.90,-10.34,1.38,-0.07,0.25,0.16,667,589,0.0,0.0

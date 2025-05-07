@@ -1,4 +1,4 @@
-LSC fully firm, full run, shock not working
+LSC fully firm, full run, shock not working, only measuring shock
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 551,606
 -0.11,-9.67,0.00,-0.04,0.07,-0.02,680,583,0.0,0.0

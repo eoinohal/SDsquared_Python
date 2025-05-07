@@ -1,4 +1,4 @@
-Normal settings full run, shock not working
+Normal settings full run, only measuring shock
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 485,616
 0.52,-9.16,3.68,0.05,0.07,-0.01,654,615,0.0,0.0

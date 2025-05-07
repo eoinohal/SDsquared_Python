@@ -1,4 +1,4 @@
-Normal settings, petentiometer came out half way down, shock not working
+Normal settings, petentiometer came out half way down, only measuring shock
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 484,657
 -1.44,-10.04,1.83,-0.07,0.49,0.06,622,648,0.0,0.0

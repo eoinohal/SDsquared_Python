@@ -1,3 +1,4 @@
+HSC fully firm, full run, shock not working
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 554,593
 -0.42,-10.62,0.90,-0.20,1.53,0.57,722,604,0.0,0.0

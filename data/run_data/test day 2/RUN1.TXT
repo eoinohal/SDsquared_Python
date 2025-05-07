@@ -1,3 +1,4 @@
+Checking system was turning on and off correctly, shock not working
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 484,657
 -6.92,-7.03,-0.44,-0.01,0.01,0.00,484,617,0.0,0.0

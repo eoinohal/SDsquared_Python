@@ -1,3 +1,4 @@
+LSC fully firm, petentiometer fell out 3/4 way down, shock not working
 RS:1000:rear_sus,FS:1000:front_sus,RB:250:test2,FB:250:test3
 425,635
 -0.21,-8.90,2.16,0.04,0.24,0.08,651,596,0.0,0.0

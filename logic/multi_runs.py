@@ -18,6 +18,7 @@ rider_path_prefix = os.path.normpath("../data/bike_profiles/")
 # Graph colour palette
 COLOR_PALETTE = Category20[20]
 
+
 # Visualization class - handles plot updates
 class VisualizationUpdater:
     def __init__(self):
@@ -39,6 +40,7 @@ class VisualizationUpdater:
         try:
             visible_runs = []
             new_run_colors = {}
+            run_comments = []  # To store comments for visible runs
 
             run_items = list(json_config.get("runs", {}).items())
 
@@ -46,7 +48,7 @@ class VisualizationUpdater:
                 if props.get("visible"):
                     normalized_path = os.path.normpath(run_file).replace("\\", "/")
                     full_path = os.path.join(run_path_prefix, normalized_path)
-                    visible_runs.append((json_index, full_path))
+                    visible_runs.append((json_index, full_path, props))  # Now includes props
 
                     color = COLOR_PALETTE[json_index % len(COLOR_PALETTE)]
                     new_run_colors[full_path] = color
@@ -62,9 +64,17 @@ class VisualizationUpdater:
             bike_data = process_bike_data(bike_file)
             processed_data = {}
 
-            for json_index, run_path in visible_runs:
+            for json_index, run_path, props in visible_runs:
                 data = load_and_process_data(run_path, bike_data)
                 if data:
+                    # Collect comments if enabled
+                    if props.get("comments", True):
+                        file_meta_data = data['data']
+                        comment = file_meta_data.get('comments', '')
+                        if comment:
+                            run_name = os.path.basename(run_path)
+                            run_comments.append(f"<b>{run_name}:</b> {comment}")
+
                     data['path'] = run_path
                     data['color'] = self.run_colors[run_path]
                     processed_data[run_path] = data
@@ -72,6 +82,15 @@ class VisualizationUpdater:
             if not processed_data:
                 self.doc.add_root(Div(text="<p style='color:red'>No valid data could be processed</p>"))
                 return
+
+            # Create comments section if there are any comments
+            comments_section = None
+            if run_comments:
+                comments_html = "<h2 style='color:white; margin-bottom:10px;'>Comments:</h2>"
+                comments_html += "<div style='color:white; font-size:15px; line-height:1.6; margin-bottom:20px; border-radius:5px;'>"
+                comments_html += "<br>".join(run_comments)
+                comments_html += "</div>"
+                comments_section = Div(text=comments_html)
 
             fork_plots = column(
                 Div(text="<h2 style='color:white'>Fork Analysis</h2>"),
@@ -95,9 +114,18 @@ class VisualizationUpdater:
                 sizing_mode="stretch_width"
             )
 
+            # Create the main layout
+            layout_components = []
+
+            # Add comments section first if it exists
+            if comments_section:
+                layout_components.append(comments_section)
+
+            # Add the rest of the plots
+            layout_components.extend([fork_plots, shock_plots])
+
             layout = column(
-                fork_plots,
-                shock_plots,
+                *layout_components,
                 sizing_mode="stretch_width"
             )
 
@@ -189,8 +217,8 @@ class VisualizationUpdater:
             all_disps = [d for f in values["files"] for d in f["displacement"] if f["displacement"]]
 
             if all_speeds and all_disps:
-                plot.x_range = Range1d(start=0, end=sorted(all_speeds)[int(len(all_speeds)*0.9)] * 1.75)
-                plot.y_range = Range1d(start=0, end=sorted(all_disps)[int(len(all_disps)*0.9)] * 1.75)
+                plot.x_range = Range1d(start=0, end=sorted(all_speeds)[int(len(all_speeds) * 0.9)] * 1.75)
+                plot.y_range = Range1d(start=0, end=sorted(all_disps)[int(len(all_disps) * 0.9)] * 1.75)
 
         # Plot data
         for file_data in values["files"]:

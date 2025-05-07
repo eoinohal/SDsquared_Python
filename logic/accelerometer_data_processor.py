@@ -68,10 +68,11 @@ def process_accelerometer_file(file, bike_data):
         return None
 
     with open(file, "r") as f:
-        lineCount = len(f.readlines()) - 4  # Discount header and footer
+        lineCount = len(f.readlines()) - 5  # Discount header and footer
 
     with open(file, "r") as f:
         yShockValues, yForkValues = [], []
+        comment = f.readline() # Comment at the top for easy access
         f.readline()  # Skip header
         initialValues = f.readline().split(',')
         for accelerometerInstance in f:
@@ -91,14 +92,15 @@ def process_accelerometer_file(file, bike_data):
                 )
             elif accelerometerInstance != 'Run finished\n':
                 timeOfRun = int(accelerometerInstance) / 1000
+
     # Generate xValues without numpy
     xValues = [i * (timeOfRun / lineCount) for i in range(lineCount)]
     shock = get_line_data(xValues, yShockValues)
     fork = get_line_data(xValues, yForkValues)
-    textData = format_data(shock[0], fork[0])
+    meta_dict = meta_data(comment)
 
     return {
-        "textData": ensure_non_empty(textData),
+        "data": ensure_non_empty(meta_dict),
         "timeOfRun": ensure_non_empty(timeOfRun),
         "xValues": ensure_non_empty(xValues),
         "yForkValues": ensure_non_empty(yForkValues),
@@ -187,17 +189,14 @@ def linear_regression(x, y):
     return slope, intercept
 
 
-def format_data(shock, fork):
-    # Formats key variables in clean way for text output
-    text = "\n\t\t\tSHOCK:\t\tFORK:\n"
-    names = ['Max:\t\t', 'Min:\t\t', 'Mean:\t\t', 'Comp:\t\t', 'Rebound:\t']
+def meta_data(comment):
+    # Contains a dictionary of the key data
+    # Contain all data
+    data = {
+        'comments' : comment,
+    }
 
-    for i in range(5):
-        text += f"{names[i]}\t{round(shock[i], 2)}\t\t{round(fork[i], 2)}\n"
-
-    text += f"\nCOMP DIFF:\t\t{round(fork[3] - shock[3], 2)}\nREBO DIFF:\t\t{round(fork[4] - shock[4], 2)}"
-
-    return text
+    return data
 
 
 def main(file_name):

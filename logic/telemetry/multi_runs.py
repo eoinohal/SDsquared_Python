@@ -139,8 +139,6 @@ class VisualizationUpdater:
             error_msg = f"Error updating visualization: {str(e)}"
             self.doc.add_root(Div(text=f"<p style='color:red'>{error_msg}</p>"))
 
-    from bokeh.models import HTMLTemplateFormatter
-
     def create_stats_table(self, processed_data):
         """Create a table showing key statistics for each run with color coding"""
         if not processed_data:

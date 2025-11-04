@@ -8,8 +8,8 @@ import sys
 if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
     current_data_file = "../data/run_data/"+str(sys.argv[1])
 else:
-    current_data_file = "../data/run_data/test day 2/RUN1.TXT"
-current_bike_file = "../data/bike_profiles/wills_megatower.txt"
+    current_data_file = "../../data/run_data/test day 2/RUN1.TXT"
+current_bike_file = "../../data/bike_profiles/wills_megatower.txt"
 
 
 def create_displacement_plot(data, file_name):

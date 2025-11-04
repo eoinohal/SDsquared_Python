@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- File manager -->
+    <!-- File manager panel -->
     <div id="file-manager">
         <h2>Select Runs</h2>
         <button id="upload-button">Upload Root Directory</button>
@@ -15,7 +15,7 @@
             <div id="file-tree-loading" style="display: none; padding: 10px;">Loading run data...</div>
         </div>
 
-        <!-- Rider profile section -->
+        <!-- Rider profile selection section -->
         <div id="rider-section" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
              <h2>Select Rider Profile</h2>
              <button id="select-rider-folder-button">Select Rider Folder</button>
@@ -27,12 +27,12 @@
 
     <div id="divider"></div>
 
-    <!-- Main content -->
+    <!-- Main visualization area -->
     <div id="content-area">
         <div id="dashboard-header">
             <h2>SD² Run Dashboard</h2>
         </div>
-        <!-- Visualization container -->
+        <!-- Bokeh visualization container -->
         <div id="bokeh-container">
             <iframe id="bokeh-iframe" src="http://localhost:5006/multi_runs" style="display: none;"></iframe>
             <div id="fallback-message">Select runs and a rider profile to view data</div>
@@ -48,7 +48,7 @@
             pathModule = require('path');
         }
 
-        // Global state variables
+        // Global state management
         let allRuns = {};
         let selectedRiderFileName = null;
         const BOKEH_URL = "http://localhost:5006/multi_runs";
@@ -61,18 +61,18 @@
         const bokehIframe = document.getElementById('bokeh-iframe');
         const fallbackMessage = document.getElementById('fallback-message');
 
-        // Panel resizing configuration
+        // Panel resizing state
         let isResizing = false;
         let lastX = 0;
         const MIN_FILE_MANAGER_WIDTH = 200;
         const MIN_CONTENT_AREA_WIDTH = 400;
 
-        // Start loading Bokeh server immediately in background
+        // Bokeh server background loading
         bokehIframe.onload = function() {
             console.log("Bokeh server loaded in background");
         };
 
-        // Updates the Bokeh visualization based on selected runs and rider profile
+        // Main visualization update function
         async function updateVisualization() {
             const visibleFiles = Object.entries(allRuns)
                 .filter(([_, state]) => state.visible)
@@ -111,9 +111,7 @@
             }
         }
 
-        /**
-         * Reads directory entries from a given path
-         */
+        // File system operations
         async function getDirectoryEntriesFromPathAsync(dirPath) {
             if (!fs || !pathModule) return [];
             try {
@@ -136,9 +134,7 @@
             }
         }
 
-        /**
-         * Loads run data from a directory path
-         */
+        // Run data directory loading
         async function loadRunDirectoryFromPath(dirPath) {
             rootRunDataPath = dirPath;
             const fileTreeLoading = document.getElementById('file-tree-loading');
@@ -162,9 +158,7 @@
             fileTreeLoading.style.display = 'none';
         }
 
-        /**
-         * Loads rider profiles from a directory path
-         */
+        // Rider profile loading
         async function loadRiderProfilesFromPath(dirPath) {
             const riderListDiv = document.getElementById("rider-list");
             const riderSelectButton = document.getElementById("select-rider-folder-button");
@@ -212,9 +206,7 @@
             riderListLoading.style.display = 'none';
         }
 
-        /**
-         * Handles directory selection via file picker
-         */
+        // Directory selection handler
         async function loadDirectory(directoryHandle) {
             rootRunDataPath = directoryHandle.name;
 
@@ -225,9 +217,7 @@
             updateVisualization();
         }
 
-        /**
-         * Builds file tree structure from directory handle
-         */
+        // File tree builders
         async function buildFileTreeWithHandle(directoryHandle, container, currentRelativePath) {
             const fragment = document.createDocumentFragment();
             const entries = [];
@@ -309,9 +299,6 @@
             container.appendChild(fragment);
         }
 
-        /**
-         * Builds file tree structure from file entries
-         */
         async function buildFileTreeFromEntries(entries, container, currentRelativePath) {
             const fragment = document.createDocumentFragment();
             entries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
@@ -389,7 +376,7 @@
             container.appendChild(fragment);
         }
 
-        // Event listeners for UI buttons
+        // Event listeners for UI interactions
         document.getElementById("upload-button").addEventListener("click", async () => {
             if (typeof window.showDirectoryPicker !== 'function') {
                 alert('Manual directory selection is not supported in this environment. Please ensure paths are auto-loaded.');
@@ -494,7 +481,7 @@
             document.removeEventListener('mouseup', handleMouseUp);
         }
 
-        // Initialize with Electron IPC or fallback
+        // Electron auto-load initialization
         if (ipcRenderer) {
             ipcRenderer.on('auto-load-paths', async (event, paths) => {
                 console.log('Received paths for auto-load:', paths);

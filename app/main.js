@@ -7,7 +7,7 @@ let pythonProcess;
 app.whenReady().then(() => {
     // Start the Python script
     const projectRoot = path.resolve(__dirname, '..');
-    const scriptPath = path.join(projectRoot, 'logic', 'multi_runs.py');
+    const scriptPath = path.join(projectRoot, 'logic', 'telemetry', 'multi_runs.py');
     pythonProcess = spawn('python', [scriptPath], { stdio: 'inherit' });
 
     // Create the Electron BrowserWindow

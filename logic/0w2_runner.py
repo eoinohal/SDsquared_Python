@@ -1,4 +1,4 @@
-from single_run import load_and_process_data, process_bike_data
+from logic.telemetry.single_run import load_and_process_data, process_bike_data
 
 
 def print_data():
